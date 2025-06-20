@@ -10,7 +10,9 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
-  output: 'standalone',
+  experimental: {
+    missingSuspenseWithCSRBailout: false,
+  },
 }
 
 export default nextConfig
