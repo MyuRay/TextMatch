@@ -13,10 +13,6 @@ const nextConfig = {
   experimental: {
     missingSuspenseWithCSRBailout: false,
   },
-  // プリレンダリングエラーを回避
-  generateStaticParams: async () => [],
-  // 404ページの静的生成を無効化
-  trailingSlash: false,
 }
 
 export default nextConfig

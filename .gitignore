@@ -6,6 +6,7 @@
 # next.js
 /.next/
 /out/
+/dist/
 
 # production
 /build
@@ -21,6 +22,11 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# firebase
+firebase.json
+.firebaserc
+firebase-debug.log
 
 # typescript
 *.tsbuildinfo
