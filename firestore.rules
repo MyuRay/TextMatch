@@ -1,64 +1,52 @@
 rules_version = '2';
 
-service cloud.firestore {
-  match /databases/{database}/documents {
-    
-    // 教科書データ：誰でも読める、ログインユーザーのみ書き込み可能
-    match /books/{bookId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    
-    // ユーザープロフィール：ログインユーザーなら読める、本人のみ書き込み可能
-    match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // 会話：参加者のみアクセス可能
-    match /conversations/{conversationId} {
-      // 読み取り：参加者のみ
-      allow read: if request.auth != null && 
-        (request.auth.uid == resource.data.buyerId || 
-         request.auth.uid == resource.data.sellerId);
-      
-      // 作成：ログインユーザーが buyerId または sellerId として含まれている場合
-      allow create: if request.auth != null && 
-        (request.auth.uid == request.resource.data.buyerId || 
-         request.auth.uid == request.resource.data.sellerId);
-      
-      // 更新：参加者のみ
-      allow update: if request.auth != null && 
-        (request.auth.uid == resource.data.buyerId || 
-         request.auth.uid == resource.data.sellerId);
-    }
-    
-    // メッセージ：会話の参加者のみアクセス可能
-    match /conversations/{conversationId}/messages/{messageId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && 
-        request.auth.uid == request.resource.data.senderId;
-      allow update, delete: if request.auth != null && 
-        request.auth.uid == resource.data.senderId;
-    }
-    
-    // お気に入り：ログインユーザーが自分のお気に入りのみ操作可能
-    match /favorites/{favoriteId} {
-      // 読み取り：自分のお気に入りのみ
-      allow read: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
-      
-      // 作成：自分のお気に入りとして作成する場合のみ
-      allow create: if request.auth != null && 
-        request.auth.uid == request.resource.data.userId;
-      
-      // 削除：自分のお気に入りのみ削除可能
-      allow delete: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
-        
-      // 更新は基本的に不要だが、念のため
-      allow update: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
+  service cloud.firestore {
+    match /databases/{database}/documents {
+
+      // 教科書データ：誰でも読める、ログインユーザーのみ書き込み可能
+      match /books/{bookId} {
+        allow read: if true;
+        allow write: if request.auth != null;
+      }
+
+      // ユーザープロフィール：ログインユーザーなら読める、本人のみ書き込み可能
+      match /users/{userId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // 会話：参加者のみアクセス可能
+      match /conversations/{conversationId} {
+        allow read: if request.auth != null &&
+          (request.auth.uid == resource.data.buyerId ||
+           request.auth.uid == resource.data.sellerId);
+        allow create: if request.auth != null &&
+          (request.auth.uid == request.resource.data.buyerId ||
+           request.auth.uid == request.resource.data.sellerId);
+        allow update: if request.auth != null &&
+          (request.auth.uid == resource.data.buyerId ||
+           request.auth.uid == resource.data.sellerId);
+      }
+
+      // メッセージ：会話の参加者のみアクセス可能
+      match /conversations/{conversationId}/messages/{messageId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null &&
+          request.auth.uid == request.resource.data.senderId;
+        allow update, delete: if request.auth != null &&
+          request.auth.uid == resource.data.senderId;
+      }
+
+      // お気に入り：ログインユーザーが自分のお気に入りのみ操作可能
+      match /favorites/{favoriteId} {
+        allow read: if request.auth != null &&
+          request.auth.uid == resource.data.userId;
+        allow create: if request.auth != null &&
+          request.auth.uid == request.resource.data.userId;
+        allow delete: if request.auth != null &&
+          request.auth.uid == resource.data.userId;
+        allow update: if request.auth != null &&
+          request.auth.uid == resource.data.userId;
+      }
     }
   }
-}
