@@ -39,21 +39,39 @@ export default function MyPage() {
       }
       
       try {
+        console.log("マイページ：ユーザーデータ取得開始", user.uid)
+        
+        // ユーザープロフィール取得
         const userDoc = await getDoc(doc(db, "users", user.uid))
+        console.log("ユーザードキュメント存在:", userDoc.exists())
         setUserData(userDoc.exists() ? userDoc.data() as UserProfile : null)
 
-        const booksSnap = await getDocs(query(collection(db, "books"), where("userId", "==", user.uid)))
+        // 出品中の教科書取得
+        console.log("出品中の教科書取得開始")
+        const booksSnap = await getDocs(query(collection(db, "textbooks"), where("userId", "==", user.uid)))
+        console.log("出品中の教科書数:", booksSnap.docs.length)
         setSellingBooks(booksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Textbook[])
 
+        // お気に入り取得
         console.log("マイページ：お気に入り取得開始")
         const userFavorites = await getUserFavorites(user.uid)
         console.log("マイページ：取得したお気に入り:", userFavorites)
         setFavorites(userFavorites)
 
+        // 購入履歴取得
+        console.log("購入履歴取得開始")
         const purSnap = await getDocs(query(collection(db, "purchases"), where("buyerId", "==", user.uid)))
+        console.log("購入履歴数:", purSnap.docs.length)
         setPurchases(purSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+        
+        console.log("マイページ：全データ取得完了")
       } catch (error) {
         console.error("ユーザーデータ取得エラー:", error)
+        console.error("エラー詳細:", {
+          code: error instanceof Error ? (error as any).code : undefined,
+          message: error instanceof Error ? error.message : String(error),
+          userId: user.uid
+        })
       } finally {
         setDataLoading(false)
       }
