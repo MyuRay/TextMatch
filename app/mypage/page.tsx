@@ -6,7 +6,7 @@ import Link from "next/link"
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import { useAuth } from "@/lib/useAuth"
-import { Textbook, UserProfile, getUserFavorites } from "@/lib/firestore"
+import { Textbook, UserProfile, getUserFavorites, getUserPurchases, getUserSellingBooks, createOrGetConversation, removeFromFavorites } from "@/lib/firestore"
 import { Button } from "@/components/ui/button"
 import {
   Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle
@@ -25,7 +25,7 @@ export default function MyPage() {
   const [userData, setUserData] = useState<UserProfile | null>(null)
   const [sellingBooks, setSellingBooks] = useState<Textbook[]>([])
   const [favorites, setFavorites] = useState<Textbook[]>([])
-  const [purchases, setPurchases] = useState<any[]>([])
+  const [purchases, setPurchases] = useState<Textbook[]>([])
   const [dataLoading, setDataLoading] = useState(true)
   const [favoritesLoading, setFavoritesLoading] = useState(false)
   const { user, loading } = useAuth()
@@ -42,36 +42,72 @@ export default function MyPage() {
         console.log("マイページ：ユーザーデータ取得開始", user.uid)
         
         // ユーザープロフィール取得
-        const userDoc = await getDoc(doc(db, "users", user.uid))
-        console.log("ユーザードキュメント存在:", userDoc.exists())
-        setUserData(userDoc.exists() ? userDoc.data() as UserProfile : null)
+        try {
+          console.log("Step 1: ユーザープロフィール取得中...")
+          const userDoc = await getDoc(doc(db, "users", user.uid))
+          console.log("ユーザードキュメント存在:", userDoc.exists())
+          setUserData(userDoc.exists() ? userDoc.data() as UserProfile : null)
+          console.log("Step 1: ユーザープロフィール取得完了")
+        } catch (profileError) {
+          console.error("Step 1 エラー:", profileError)
+          throw profileError
+        }
 
         // 出品中の教科書取得
-        console.log("出品中の教科書取得開始")
-        const booksSnap = await getDocs(query(collection(db, "textbooks"), where("userId", "==", user.uid)))
-        console.log("出品中の教科書数:", booksSnap.docs.length)
-        setSellingBooks(booksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Textbook[])
+        try {
+          console.log("Step 2: 出品中の教科書取得中...")
+          const userSellingBooks = await getUserSellingBooks(user.uid)
+          console.log("マイページ：取得した出品中教科書:", userSellingBooks)
+          setSellingBooks(userSellingBooks)
+          console.log("Step 2: 出品中の教科書取得完了")
+        } catch (sellingError) {
+          console.error("Step 2 エラー:", sellingError)
+          console.log("出品中の教科書取得をスキップ（エラーのため）")
+          setSellingBooks([])
+        }
 
         // お気に入り取得
-        console.log("マイページ：お気に入り取得開始")
-        const userFavorites = await getUserFavorites(user.uid)
-        console.log("マイページ：取得したお気に入り:", userFavorites)
-        setFavorites(userFavorites)
+        try {
+          console.log("Step 3: お気に入り取得中...")
+          const userFavorites = await getUserFavorites(user.uid)
+          console.log("マイページ：取得したお気に入り件数:", userFavorites.length)
+          console.log("マイページ：取得したお気に入り詳細:", userFavorites)
+          setFavorites(userFavorites)
+          console.log("Step 3: お気に入り取得完了")
+        } catch (favoritesError) {
+          console.error("Step 3 エラー:", favoritesError)
+          console.log("お気に入り取得をスキップ（エラーのため）")
+          setFavorites([])
+        }
 
         // 購入履歴取得
-        console.log("購入履歴取得開始")
-        const purSnap = await getDocs(query(collection(db, "purchases"), where("buyerId", "==", user.uid)))
-        console.log("購入履歴数:", purSnap.docs.length)
-        setPurchases(purSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+        try {
+          console.log("Step 4: 購入履歴取得中...")
+          const userPurchases = await getUserPurchases(user.uid)
+          console.log("マイページ：取得した購入履歴:", userPurchases)
+          setPurchases(userPurchases)
+          console.log("Step 4: 購入履歴取得完了")
+        } catch (purchasesError) {
+          console.error("Step 4 エラー:", purchasesError)
+          console.log("購入履歴取得をスキップ（エラーのため）")
+          setPurchases([])
+        }
         
         console.log("マイページ：全データ取得完了")
       } catch (error) {
         console.error("ユーザーデータ取得エラー:", error)
-        console.error("エラー詳細:", {
-          code: error instanceof Error ? (error as any).code : undefined,
-          message: error instanceof Error ? error.message : String(error),
-          userId: user.uid
-        })
+        console.error("エラーの型:", typeof error)
+        console.error("エラーの構造:", Object.keys(error || {}))
+        console.error("エラー文字列:", String(error))
+        
+        // Firebaseエラーの詳細を取得
+        if (error && typeof error === 'object') {
+          console.error("Firebase エラーコード:", (error as any).code)
+          console.error("Firebase エラーメッセージ:", (error as any).message)
+          console.error("Firebase エラー詳細:", JSON.stringify(error, null, 2))
+        }
+        
+        console.error("ユーザーUID:", user.uid)
       } finally {
         setDataLoading(false)
       }
@@ -159,7 +195,12 @@ export default function MyPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <BooksListCard title="お気に入り" books={favorites} />
+                <BooksListCard 
+                  title="お気に入り" 
+                  books={favorites} 
+                  favorites={favorites} 
+                  setFavorites={setFavorites} 
+                />
               )
             )} 
             {activeTab === "messages" && (
@@ -210,13 +251,88 @@ function ProfileCard({ user }: { user: UserProfile }) {
   )
 }
 
-function BooksListCard({ title, books, isPurchase = false, isEditable = false }: {
+function BooksListCard({ title, books, isPurchase = false, isEditable = false, favorites, setFavorites }: {
   title: string
   books: Textbook[]
   isPurchase?: boolean
   isEditable?: boolean
+  favorites?: Textbook[]
+  setFavorites?: (favorites: Textbook[]) => void
 }) {
   const isFavorites = title === "お気に入り"
+  const { user } = useAuth()
+  const router = useRouter()
+  
+  const handleMessageSeller = async (book: Textbook) => {
+    if (!user || !book.userId) {
+      router.push("/login")
+      return
+    }
+
+    if (user.uid === book.userId) {
+      alert("自分の出品には連絡できません")
+      return
+    }
+
+    try {
+      console.log("出品者に連絡 - ユーザー:", user.uid)
+      console.log("出品者に連絡 - 出品者:", book.userId)
+      
+      const conversationId = await createOrGetConversation(
+        user.uid,
+        book.userId,
+        book.id
+      )
+      console.log("作成された会話ID:", conversationId)
+
+      router.push(`/messages/${conversationId}`)
+    } catch (error) {
+      console.error("会話作成エラー:", error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      alert(`エラーが発生しました: ${errorMessage}`)
+    }
+  }
+
+  const handleRemoveFromFavorites = async (book: Textbook) => {
+    if (!user || !favorites || !setFavorites) return
+
+    try {
+      console.log("お気に入りから削除:", book.id)
+      await removeFromFavorites(user.uid, book.id)
+      
+      // お気に入り一覧を更新
+      const updatedFavorites = favorites.filter(fav => fav.id !== book.id)
+      setFavorites(updatedFavorites)
+      
+      console.log("お気に入りから削除完了")
+    } catch (error) {
+      console.error("お気に入り削除エラー:", error)
+      alert("お気に入りの削除に失敗しました")
+    }
+  }
+
+  const formatPurchaseDate = (purchasedAt: any) => {
+    if (!purchasedAt) return "不明"
+    
+    try {
+      // Timestamp オブジェクトの場合
+      if (purchasedAt.toDate) {
+        return purchasedAt.toDate().toLocaleDateString('ja-JP')
+      }
+      // 秒数の場合
+      if (purchasedAt.seconds) {
+        return new Date(purchasedAt.seconds * 1000).toLocaleDateString('ja-JP')
+      }
+      // Date オブジェクトの場合
+      if (purchasedAt instanceof Date) {
+        return purchasedAt.toLocaleDateString('ja-JP')
+      }
+      return String(purchasedAt)
+    } catch (error) {
+      console.error("日付変換エラー:", error)
+      return "不明"
+    }
+  }
   
   return (
     <Card>
@@ -224,15 +340,37 @@ function BooksListCard({ title, books, isPurchase = false, isEditable = false }:
       <CardContent className="space-y-4">
         {books.length === 0 ? (
           <div className="text-center py-8">
-            <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+            {isFavorites ? (
+              <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+            ) : isPurchase ? (
+              <ShoppingBag className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+            ) : isEditable ? (
+              <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+            ) : (
+              <Package className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+            )}
             <p className="text-muted-foreground">
-              {isFavorites ? "お気に入りの教科書はまだありません" : "該当する教科書はありません"}
+              {isFavorites 
+                ? "お気に入りの教科書はまだありません" 
+                : isPurchase 
+                ? "購入した教科書はまだありません"
+                : isEditable 
+                ? "出品中の教科書はありません"
+                : "該当する教科書はありません"}
             </p>
             {isFavorites && (
               <Link href="/marketplace">
                 <Button variant="outline" className="mt-4">
                   <BookOpen className="mr-2 h-4 w-4" />
                   教科書を探す
+                </Button>
+              </Link>
+            )}
+            {isEditable && (
+              <Link href="/post-textbook">
+                <Button variant="outline" className="mt-4">
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  教科書を出品する
                 </Button>
               </Link>
             )}
@@ -246,21 +384,48 @@ function BooksListCard({ title, books, isPurchase = false, isEditable = false }:
                 <p className="text-sm text-muted-foreground">{book.author}</p>
                 <p className="text-sm">価格：¥{book.price?.toLocaleString()}</p>
                 {book.status === 'sold' && <p className="text-sm text-red-500">売切済</p>}
-                {isPurchase && <p className="text-sm">購入日：{book.purchasedAt}</p>}
+                {book.status === 'reserved' && <p className="text-sm text-yellow-500">予約済</p>}
+                {book.status === 'available' && isEditable && <p className="text-sm text-green-500">出品中</p>}
+                {isPurchase && <p className="text-sm">購入日：{formatPurchaseDate(book.purchasedAt)}</p>}
                 <div className="mt-2 flex gap-2">
                   {isFavorites && (
-                    <Link href={`/marketplace/${book.id}`}>
-                      <Button variant="outline" size="sm">
-                        <BookOpen className="mr-2 h-4 w-4" /> 詳細を見る
+                    <>
+                      <Link href={`/marketplace/${book.id}`}>
+                        <Button variant="outline" size="sm">
+                          <BookOpen className="mr-2 h-4 w-4" /> 詳細を見る
+                        </Button>
+                      </Link>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleRemoveFromFavorites(book)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> 削除
                       </Button>
-                    </Link>
+                    </>
+                  )}
+                  {isPurchase && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleMessageSeller(book)}
+                    >
+                      <MessageSquare className="mr-2 h-4 w-4" /> 出品者に連絡
+                    </Button>
                   )}
                   {isEditable && (
-                    <Link href={`/edit/${book.id}`}>
-                      <Button variant="outline" size="sm">
-                        <Edit className="mr-2 h-4 w-4" /> 編集する
-                      </Button>
-                    </Link>
+                    <>
+                      <Link href={`/marketplace/${book.id}`}>
+                        <Button variant="outline" size="sm">
+                          <BookOpen className="mr-2 h-4 w-4" /> 詳細を見る
+                        </Button>
+                      </Link>
+                      <Link href={`/edit/${book.id}`}>
+                        <Button variant="outline" size="sm">
+                          <Edit className="mr-2 h-4 w-4" /> 編集する
+                        </Button>
+                      </Link>
+                    </>
                   )}
                 </div>
               </div>

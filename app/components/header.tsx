@@ -24,6 +24,7 @@ export function Header() {
       <nav className="flex gap-4 items-center">
         <Link href="/" className="hover:underline">ホーム</Link>
         <Link href="/marketplace" className="hover:underline">出品一覧</Link>
+        <Link href="/contact" className="hover:underline">お問い合わせ</Link>
 
         {/* 出品リンク（ログイン必須） */}
         {user ? (

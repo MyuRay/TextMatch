@@ -8,7 +8,7 @@ import { ArrowLeft, Calendar, MapPin, MessageCircle, User, BookOpen, Heart, Cred
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog"
 import { Header } from "@/app/components/header"
 import { Footer } from "@/app/components/footer"
 import { getTextbookById, getUserNickname, createOrGetConversation, Textbook, isFavorite, addToFavorites, removeFromFavorites } from "@/lib/firestore"
@@ -232,6 +232,7 @@ export default function TextbookDetailPage() {
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-md">
+                        <DialogTitle>PayPay決済</DialogTitle>
                         {textbook && (
                           <PayPayPayment
                             textbook={{

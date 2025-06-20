@@ -32,6 +32,7 @@ export interface Textbook {
   status?: 'available' | 'reserved' | 'sold'
   buyerId?: string
   createdAt: Timestamp
+  purchasedAt?: Timestamp
 }
 
 export interface UserProfile {
@@ -211,6 +212,10 @@ export const updateTextbookStatus = async (
     
     if (buyerId) {
       updateData.buyerId = buyerId
+      // 購入時は購入日も記録
+      if (status === 'sold') {
+        updateData.purchasedAt = Timestamp.now()
+      }
     }
     
     await setDoc(bookRef, updateData, { merge: true })
@@ -319,18 +324,92 @@ export const getUserFavorites = async (userId: string): Promise<Textbook[]> => {
     // 教科書情報を取得
     const books = await Promise.all(
       bookIds.map(async (bookId) => {
-        console.log("教科書詳細取得:", bookId)
-        const book = await getTextbookById(bookId)
-        console.log("取得した教科書:", book)
-        return book
+        try {
+          console.log("教科書詳細取得:", bookId)
+          const book = await getTextbookById(bookId)
+          console.log("取得した教科書:", book ? `${book.title} (${book.id})` : "見つからず")
+          return book
+        } catch (error) {
+          console.error("教科書詳細取得エラー:", bookId, error)
+          return null
+        }
       })
     )
     
     const validBooks = books.filter(book => book !== null) as Textbook[]
     console.log("有効な教科書数:", validBooks.length)
+    console.log("有効な教科書一覧:", validBooks.map(book => ({ id: book.id, title: book.title })))
     return validBooks
   } catch (error) {
     console.error("お気に入り一覧取得失敗:", error)
+    console.error("エラー詳細:", {
+      code: error instanceof Error ? (error as any).code : undefined,
+      message: error instanceof Error ? error.message : String(error),
+      userId
+    })
+    return []
+  }
+}
+
+// ✅ ユーザーの購入履歴を取得
+export const getUserPurchases = async (userId: string): Promise<Textbook[]> => {
+  try {
+    console.log("購入履歴取得開始:", userId)
+    const textbooksRef = collection(db, "books")
+    const q = query(
+      textbooksRef,
+      where("buyerId", "==", userId),
+      where("status", "==", "sold")
+    )
+    const snapshot = await getDocs(q)
+    console.log("購入履歴ドキュメント数:", snapshot.docs.length)
+    
+    const purchases = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Textbook[]
+    
+    console.log("購入履歴:", purchases)
+    return purchases
+  } catch (error) {
+    console.error("購入履歴取得失敗:", error)
+    console.error("エラー詳細:", {
+      code: error instanceof Error ? (error as any).code : undefined,
+      message: error instanceof Error ? error.message : String(error),
+      userId
+    })
+    return []
+  }
+}
+
+// ✅ ユーザーの出品中教科書を取得
+export const getUserSellingBooks = async (userId: string): Promise<Textbook[]> => {
+  try {
+    console.log("出品中教科書取得開始:", userId)
+    const textbooksRef = collection(db, "books")
+    const q = query(
+      textbooksRef,
+      where("userId", "==", userId)
+    )
+    const snapshot = await getDocs(q)
+    console.log("出品中教科書ドキュメント数:", snapshot.docs.length)
+    
+    const sellingBooks = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Textbook[]
+    
+    // 作成日順にソート（新しい順）
+    const sortedBooks = sellingBooks.sort((a, b) => {
+      const aTime = a.createdAt?.seconds || 0
+      const bTime = b.createdAt?.seconds || 0
+      return bTime - aTime
+    })
+    
+    console.log("出品中教科書:", sortedBooks)
+    return sortedBooks
+  } catch (error) {
+    console.error("出品中教科書取得失敗:", error)
     console.error("エラー詳細:", {
       code: error instanceof Error ? (error as any).code : undefined,
       message: error instanceof Error ? error.message : String(error),
