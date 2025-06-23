@@ -177,7 +177,7 @@ export default function ConversationPage() {
       await updateTextbookStatus(textbook.id, newStatus, buyerId)
       
       // 教科書の状態を更新
-      setTextbook(prev => prev ? { ...prev, status: newStatus, buyerId } : null)
+      setTextbook((prev: any) => prev ? { ...prev, status: newStatus, buyerId } : null)
       
       alert(newStatus === 'sold' ? '成約済みに変更しました！' : '出品中に戻しました')
     } catch (error) {

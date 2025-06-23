@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import { onAuthStateChanged, User } from "firebase/auth"
 import { auth } from "./firebaseAuth"
-import { getUserProfile, UserProfile } from "./firestore"
+import { getFullUserProfile, UserProfile } from "./firestore"
 
 interface AuthContextType {
   user: User | null
@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (firebaseUser) {
         try {
-          const profile = await getUserProfile(firebaseUser.uid)
+          const profile = await getFullUserProfile(firebaseUser.uid)
           setUserProfile(profile)
         } catch (error) {
           console.error("プロフィール取得エラー:", error)
