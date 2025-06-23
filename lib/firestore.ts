@@ -38,7 +38,7 @@ export interface Textbook {
 export interface UserProfile {
   fullName: string
   email: string
-  studentId: string
+  studentId?: string
   university: string
   department?: string
   nickname?: string
