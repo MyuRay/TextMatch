@@ -73,6 +73,13 @@ export default function MarketplacePage() {
 
       <div className="container mx-auto py-4 md:py-6 px-4 md:px-6">
         <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6">出品一覧</h1>
+        
+        {/* テスト運用中のお知らせ */}
+        <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+          <p className="text-orange-800 font-medium">
+            🧪 <strong>テスト運用中</strong> -  現在テスト運用中です！0円で教科書の取引をお願いします。
+          </p>
+        </div>
 
         {/* 検索バー */}
         <div className="mb-4 md:mb-6">

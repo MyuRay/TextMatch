@@ -181,7 +181,7 @@ export default function RegisterPage() {
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
-    if (!formData.fullName.trim()) newErrors.fullName = "氏名を入力してください"
+    if (!formData.fullName.trim()) newErrors.fullName = "表示名を入力してください"
     if (!formData.email) newErrors.email = "メールアドレスを入力してください"
     else if (!/^\S+@\S+\.\S+$/.test(formData.email)) newErrors.email = "有効なメールアドレスを入力してください"
     if (!formData.university) newErrors.university = "大学名を入力してください"
@@ -264,8 +264,8 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fullName">氏名</Label>
-                <Input id="fullName" name="fullName" placeholder="山田 太郎" value={formData.fullName} onChange={handleChange} />
+                <Label htmlFor="fullName">表示名</Label>
+                <Input id="fullName" name="fullName" placeholder="" value={formData.fullName} onChange={handleChange} />
                 {errors.fullName && <p className="text-sm text-destructive">{errors.fullName}</p>}
               </div>
 
@@ -291,7 +291,7 @@ export default function RegisterPage() {
                   <Input
                     id="university"
                     name="university"
-                    placeholder="〇〇大学"
+                    placeholder="〇〇大学(なるべく正式名称)"
                     value={formData.university}
                     onChange={handleChange}
                     onFocus={() => universitySuggestions.length > 0 && setShowUniversitySuggestions(true)}

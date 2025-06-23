@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -12,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { ImageUpload } from "./image-upload"
 import { fetchBookByISBN } from "./isbn-service"
 import { fetchImageAsFile } from "@/lib/imageUtils"
-import { Loader2 } from "lucide-react"
+import { Loader2, HelpCircle } from "lucide-react"
 import { addTextbook } from "@/lib/firestore"
 import { uploadImage } from "@/lib/storage"
 import { getAuth } from "firebase/auth"
@@ -36,6 +37,7 @@ export default function PostTextbookPage() {
   const [images, setImages] = useState<File[]>([])
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isISBNDialogOpen, setIsISBNDialogOpen] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -140,7 +142,7 @@ export default function PostTextbookPage() {
         title: formData.title,
         author: formData.author,
         description: formData.description,
-        price: Number(formData.price),
+        price: 0, // テスト運用中は0円固定
         condition: formData.condition,
         meetupLocation: formData.meetupLocation,
         imageUrls: imageUrls,
@@ -170,19 +172,82 @@ export default function PostTextbookPage() {
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle>教科書を出品</CardTitle>
-            <CardDescription>以下のフォームに記入して、教科書を出品してください。</CardDescription>
+            <CardDescription>
+              以下のフォームに記入して、教科書を出品してください。<br />
+              <span className="text-orange-600 font-medium">※現在テスト運用中のため、価格は0円固定となります。</span>
+            </CardDescription>
           </CardHeader>
 
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="isbn">ISBN</Label>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="isbn">ISBN</Label>
+                  <span className="text-sm text-muted-foreground">（任意）</span>
+                  <Dialog open={isISBNDialogOpen} onOpenChange={setIsISBNDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                        <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-lg">
+                      <DialogHeader>
+                        <DialogTitle>📚 ISBNについて</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="text-sm space-y-3">
+                          <div>
+                            <h4 className="font-medium mb-2">ISBNとは？</h4>
+                            <p className="text-muted-foreground">
+                              ISBN（International Standard Book Number）は、国際標準図書番号のことで、
+                              本を識別するための13桁の番号です。
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <h4 className="font-medium mb-2">どこに書いてある？</h4>
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                              <ul className="text-sm space-y-1 text-muted-foreground">
+                                <li>• 本の裏表紙（バーコードの下）</li>
+                                <li>• 奥付（本の最後のページ）</li>
+                                <li>• 版権ページ（タイトルページの裏）</li>
+                              </ul>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <h4 className="font-medium mb-2">入力例</h4>
+                            <div className="bg-blue-50 p-3 rounded border-l-4 border-blue-400">
+                              <p className="text-sm">
+                                <strong>正しい形式：</strong> 978-4-123-45678-9<br/>
+                                <strong>入力時：</strong> 9784123456789
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="text-xs text-muted-foreground">
+                            <p><strong>注意：</strong> ISBNが分からない場合は空欄のままでも出品できます。</p>
+                          </div>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
                 <div className="flex space-x-2">
-                  <Input id="isbn" name="isbn" placeholder="ISBNを入力" value={formData.isbn} onChange={handleChange} />
+                  <Input id="isbn" name="isbn" placeholder="例: 9784123456789" value={formData.isbn} onChange={handleChange} />
                   <Button type="button" onClick={handleFetchFromISBN} disabled={isLoading || !formData.isbn}>
                     {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />読み込み中...</> : "ISBNから取得"}
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  ISBNを入力すると、書籍情報を自動取得できます。
+                  <span 
+                    className="text-blue-600 cursor-pointer hover:underline ml-1"
+                    onClick={() => setIsISBNDialogOpen(true)}
+                  >
+                    （ISBNとは？）
+                  </span>
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="title">タイトル</Label>
@@ -197,8 +262,8 @@ export default function PostTextbookPage() {
                 <Textarea id="description" name="description" rows={4} value={formData.description} onChange={handleChange} required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="price">価格 (¥)</Label>
-                <Input id="price" name="price" type="number" min="0" step="1" value={formData.price} onChange={handleChange} required />
+                <Label htmlFor="price">価格 (¥) - テスト運用中は0円固定</Label>
+                <Input id="price" name="price" type="number" value="0" disabled className="bg-gray-100" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="condition">状態</Label>

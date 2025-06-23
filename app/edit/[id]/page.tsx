@@ -25,7 +25,8 @@ export default function EditBookPage() {
     price: "",
     condition: "",
     faculty: "",
-    description: ""
+    description: "",
+    meetupLocation: ""
   })
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -43,6 +44,7 @@ export default function EditBookPage() {
           condition: data.condition || "",
           faculty: data.faculty || "",
           description: data.description || "",
+          meetupLocation: data.meetupLocation || "",
         })
         setImagePreview(data.imageUrl || null)
       } else {
@@ -79,7 +81,7 @@ export default function EditBookPage() {
     const docRef = doc(db, "books", bookId)
     await updateDoc(docRef, {
       ...formData,
-      price: Number(formData.price),
+      price: 0, // テスト運用中は0円固定
       imageUrl: imagePreview,
     })
     alert("教科書情報を更新しました！")
@@ -94,7 +96,13 @@ export default function EditBookPage() {
         <ArrowLeft className="mr-2 h-4 w-4" />マイページに戻る
       </Link>
 
-      <h1 className="text-3xl font-bold mb-6 text-center">教科書情報の編集</h1>
+      <h1 className="text-3xl font-bold mb-4 text-center">教科書情報の編集</h1>
+      
+      <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg max-w-2xl mx-auto">
+        <p className="text-orange-800 font-medium text-center">
+          🧪 <strong>テスト運用中</strong> - 価格は0円固定です。取引場所は編集できます。
+        </p>
+      </div>
 
       <Card>
         <form onSubmit={handleSubmit}>
@@ -113,8 +121,8 @@ export default function EditBookPage() {
                   <Input id="author" name="author" value={formData.author} onChange={handleChange} required />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="price">価格（円）</Label>
-                  <Input id="price" name="price" type="number" value={formData.price} onChange={handleChange} required />
+                  <Label htmlFor="price">価格（円）- テスト運用中は0円固定</Label>
+                  <Input id="price" name="price" type="number" value="0" disabled className="bg-gray-100" />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="condition">状態</Label>
@@ -130,6 +138,8 @@ export default function EditBookPage() {
                   </Select>
                 </div>
                 <div className="grid gap-2">
+                  <Label htmlFor="meetupLocation">希望取引場所</Label>
+                  <Input id="meetupLocation" name="meetupLocation" value={formData.meetupLocation} onChange={handleChange} placeholder="例: 大学1号館前、学生食堂" required />
                 </div>
               </div>
 

@@ -19,9 +19,10 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Send, User, BookOpen, Clock } from "lucide-react"
+import { ArrowLeft, Send, User, BookOpen, Clock, CheckCircle, RotateCcw } from "lucide-react"
 import Link from "next/link"
-import { getUserProfile, getTextbookById } from "@/lib/firestore"
+import { getUserProfile, getTextbookById, updateTextbookStatus } from "@/lib/firestore"
+import { sendEmailNotification, createMessageNotificationEmail } from "@/lib/emailService"
 import { Header } from "../../components/header"
 
 export default function ConversationPage() {
@@ -107,10 +108,81 @@ export default function ConversationPage() {
         senderId: user.uid,
         createdAt: serverTimestamp(),
       })
+      
+      // メール通知を送信
+      await sendMessageNotification()
+      
       setNewMessage("")
     } catch (error) {
       console.error("メッセージ送信エラー:", error)
       alert("メッセージの送信に失敗しました")
+    }
+  }
+
+  const sendMessageNotification = async () => {
+    try {
+      if (!conversation || !textbook || !user) return
+
+      // 受信者を特定（送信者でない方）
+      const recipientId = conversation.buyerId === user.uid ? conversation.sellerId : conversation.buyerId
+      
+      // 受信者の情報を取得
+      const recipientDoc = await getDoc(doc(db, "users", recipientId))
+      if (!recipientDoc.exists()) return
+
+      const recipientData = recipientDoc.data()
+      const recipientEmail = recipientData.email
+      const recipientName = recipientData.fullName || "ユーザー"
+
+      // 送信者の名前
+      const senderName = currentUserProfile.name || "ユーザー"
+
+      // メッセージプレビュー（最初の50文字）
+      const messagePreview = newMessage.length > 50 
+        ? newMessage.substring(0, 50) + "..." 
+        : newMessage
+
+      // メール内容を作成
+      const emailNotification = createMessageNotificationEmail(
+        recipientName,
+        senderName,
+        textbook.title,
+        messagePreview
+      )
+
+      // 受信者のメールアドレスを設定
+      emailNotification.to = recipientEmail
+
+      // メール送信
+      await sendEmailNotification(emailNotification)
+      
+      console.log(`📧 メール通知送信完了: ${recipientEmail}`)
+    } catch (error) {
+      console.error("メール通知送信エラー:", error)
+      // メール送信エラーでもメッセージ送信は継続
+    }
+  }
+
+  const handleStatusChange = async (newStatus: 'available' | 'sold') => {
+    if (!user || !textbook || !conversation) return
+    
+    // 出品者のみ実行可能
+    if (user.uid !== conversation.sellerId) {
+      alert("出品者のみが取引状況を変更できます")
+      return
+    }
+    
+    try {
+      const buyerId = newStatus === 'sold' ? conversation.buyerId : undefined
+      await updateTextbookStatus(textbook.id, newStatus, buyerId)
+      
+      // 教科書の状態を更新
+      setTextbook(prev => prev ? { ...prev, status: newStatus, buyerId } : null)
+      
+      alert(newStatus === 'sold' ? '成約済みに変更しました！' : '出品中に戻しました')
+    } catch (error) {
+      console.error("ステータス変更エラー:", error)
+      alert("ステータスの変更に失敗しました")
     }
   }
 
@@ -195,6 +267,50 @@ export default function ConversationPage() {
               </div>
             </CardContent>
           </Card>
+          
+          {/* 出品者向け成約案内・ボタン */}
+          {conversation && user && user.uid === conversation.sellerId && (
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1">
+                    <h4 className="font-medium text-blue-900 mb-2">📋 出品者メニュー</h4>
+                    {textbook?.status === 'sold' ? (
+                      <div>
+                        <p className="text-sm text-blue-800 mb-3">
+                          この教科書は成約済みです。再度出品する場合は「出品中に戻す」ボタンを押してください。
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-green-300 text-green-700 hover:bg-green-50"
+                          onClick={() => handleStatusChange('available')}
+                        >
+                          <RotateCcw className="mr-2 h-4 w-4" />
+                          出品中に戻す
+                        </Button>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-sm text-blue-800 mb-3">
+                          取引が決まりましたら「成約済み」ボタンを押して、取引完了をお知らせください。
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-red-300 text-red-700 hover:bg-red-50"
+                          onClick={() => handleStatusChange('sold')}
+                        >
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          成約済みにする
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
@@ -241,7 +357,14 @@ export default function ConversationPage() {
                         isCurrentUser ? 'text-primary-foreground/70 justify-end' : 'text-muted-foreground justify-start'
                       }`}>
                         <Clock className="h-3 w-3" />
-                        {msg.createdAt?.toDate?.()?.toLocaleTimeString() || "送信中..."}
+                        {msg.createdAt?.toDate?.() ? (
+                          msg.createdAt.toDate().toLocaleString('ja-JP', { 
+                            month: 'numeric', 
+                            day: 'numeric', 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })
+                        ) : "送信中..."}
                       </div>
                     </div>
                   </div>

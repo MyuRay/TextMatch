@@ -4,18 +4,16 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft, Calendar, MapPin, MessageCircle, User, BookOpen, Heart, CreditCard } from "lucide-react"
+import { ArrowLeft, Calendar, MapPin, MessageCircle, User, BookOpen, Heart, CheckCircle, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog"
 import { Header } from "@/app/components/header"
 import { Footer } from "@/app/components/footer"
 import { ImageGallery } from "@/app/components/image-gallery"
-import { getTextbookById, getUserNickname, createOrGetConversation, Textbook, isFavorite, addToFavorites, removeFromFavorites } from "@/lib/firestore"
+import { getTextbookById, getUserNickname, createOrGetConversation, Textbook, isFavorite, addToFavorites, removeFromFavorites, updateTextbookStatus } from "@/lib/firestore"
 import { formatDate } from "@/lib/utils"
 import { useAuth } from "@/lib/useAuth"
-import { PayPayPayment } from "@/components/PayPayPayment"
 
 export default function TextbookDetailPage() {
   const params = useParams()
@@ -26,7 +24,6 @@ export default function TextbookDetailPage() {
   const [favoriteStatus, setFavoriteStatus] = useState(false)
   const [favoriteLoading, setFavoriteLoading] = useState(false)
   const [sellerName, setSellerName] = useState("")
-  const [showPayment, setShowPayment] = useState(false)
 
   const conditionMap: Record<string, string> = {
     new: "新品",
@@ -88,6 +85,19 @@ export default function TextbookDetailPage() {
       alert("お気に入りの操作に失敗しました")
     } finally {
       setFavoriteLoading(false)
+    }
+  }
+
+  const handleStatusChange = async (newStatus: 'available' | 'sold') => {
+    if (!user || !textbook || user.uid !== textbook.userId) return
+    
+    try {
+      await updateTextbookStatus(textbook.id, newStatus)
+      setTextbook(prev => prev ? { ...prev, status: newStatus } : null)
+      alert(newStatus === 'sold' ? '成約済みに変更しました' : '出品中に戻しました')
+    } catch (error) {
+      console.error("ステータス変更エラー:", error)
+      alert("ステータスの変更に失敗しました")
     }
   }
 
@@ -204,9 +214,9 @@ export default function TextbookDetailPage() {
               </div>
             </div>
 
-            {/* 支払い・連絡・お気に入りボタン */}
+            {/* 連絡・お気に入りボタン */}
             <div className="space-y-4 pt-4">
-              {/* PayPay決済ボタン */}
+              {/* ステータス表示 */}
               {user && user.uid !== textbook?.userId && (
                 <>
                   {textbook?.status === 'sold' ? (
@@ -220,41 +230,40 @@ export default function TextbookDetailPage() {
                       <p className="text-sm text-muted-foreground">この教科書は予約済みです</p>
                     </div>
                   ) : (
-                    <Dialog open={showPayment} onOpenChange={setShowPayment}>
-                      <DialogTrigger asChild>
-                        <Button 
-                          size="lg" 
-                          className="w-full bg-red-500 hover:bg-red-600 text-white"
-                        >
-                          <CreditCard className="mr-2 h-5 w-5" />
-                          PayPayで購入する (¥{textbook?.price?.toLocaleString()})
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-md">
-                        <DialogTitle>PayPay決済</DialogTitle>
-                        {textbook && (
-                          <PayPayPayment
-                            textbook={{
-                              id: textbook.id,
-                              title: textbook.title,
-                              price: textbook.price,
-                              userId: textbook.userId
-                            }}
-                            buyerId={user.uid}
-                            onPaymentSuccess={() => {
-                              setShowPayment(false)
-                              // 決済完了後にページを更新して状態を反映
-                              window.location.reload()
-                            }}
-                            onPaymentCancel={() => {
-                              setShowPayment(false)
-                            }}
-                          />
-                        )}
-                      </DialogContent>
-                    </Dialog>
+                    <div className="w-full p-4 bg-green-50 border border-green-200 rounded-lg text-center">
+                      <Badge variant="secondary" className="mb-2 bg-green-100 text-green-800">購入可能</Badge>
+                      <p className="text-sm text-muted-foreground">出品者に連絡して取引を開始しましょう</p>
+                    </div>
                   )}
                 </>
+              )}
+
+              {/* 出品者向けステータス変更ボタン */}
+              {user && user.uid === textbook?.userId && (
+                <div className="w-full p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm font-medium text-blue-800 mb-3">出品者メニュー</p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {textbook?.status === 'sold' ? (
+                      <Button
+                        variant="outline"
+                        className="flex-1 border-green-200 text-green-700 hover:bg-green-50"
+                        onClick={() => handleStatusChange('available')}
+                      >
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        出品中に戻す
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        className="flex-1 border-red-200 text-red-700 hover:bg-red-50"
+                        onClick={() => handleStatusChange('sold')}
+                      >
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        成約済みにする
+                      </Button>
+                    )}
+                  </div>
+                </div>
               )}
               
               {/* 連絡・お気に入りボタン */}
