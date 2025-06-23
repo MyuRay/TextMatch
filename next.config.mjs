@@ -2,7 +2,7 @@
 const nextConfig = {
   images: {
     unoptimized: true,
-    domains: ['firebasestorage.googleapis.com'],
+    domains: ['firebasestorage.googleapis.com', 'books.google.com', 'books.google.co.jp'],
   },
   typescript: {
     ignoreBuildErrors: false,

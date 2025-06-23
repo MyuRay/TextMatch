@@ -176,11 +176,12 @@ export default function ConversationPage() {
           <Card className="bg-white">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="w-16 h-20 bg-muted rounded overflow-hidden">
+                <div className="w-16 h-20 bg-muted rounded overflow-hidden flex items-center justify-center">
                   <img 
-                    src={textbook.imageUrl || "/placeholder.svg"} 
+                    src={(textbook.imageUrls && textbook.imageUrls[0]) || textbook.imageUrl || "/placeholder.svg"} 
                     alt={textbook.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
+                    style={{ objectFit: 'contain' }}
                   />
                 </div>
                 <div className="flex-1">

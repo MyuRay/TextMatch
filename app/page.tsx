@@ -93,13 +93,20 @@ export default function HomePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {latestBooks.map((book) => (
                 <Card key={book.id} className="overflow-hidden transition-all hover:shadow-md">
-                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted flex items-center justify-center">
                     <Image
-                      src={book.imageUrl || "/placeholder.svg"}
+                      src={(book.imageUrls && book.imageUrls[0]) || book.imageUrl || "/placeholder.svg"}
                       alt={book.title}
                       fill
-                      className="object-cover"
+                      className="object-contain"
+                      style={{ objectFit: 'contain' }}
                     />
+                    {/* 複数画像インジケータ */}
+                    {book.imageUrls && book.imageUrls.length > 1 && (
+                      <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                        +{book.imageUrls.length - 1}
+                      </div>
+                    )}
                   </div>
                   <CardContent className="p-4 space-y-2">
                     <h3 className="font-semibold text-base leading-snug line-clamp-2">{book.title}</h3>

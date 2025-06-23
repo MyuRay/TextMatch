@@ -10,13 +10,20 @@ export function TextbookCard({ textbook }: { textbook: any }) {
   
   return (
     <Card className={`overflow-hidden transition-all hover:shadow-md ${isSold ? 'opacity-75' : ''}`}>
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted flex items-center justify-center">
         <Image
-          src={textbook.imageUrl || "/placeholder.svg"}
+          src={(textbook.imageUrls && textbook.imageUrls[0]) || textbook.imageUrl || "/placeholder.svg"}
           alt={textbook.title}
           fill
-          className={`object-cover ${isSold ? 'grayscale' : ''}`}
+          className={`object-contain ${isSold ? 'grayscale' : ''}`}
+          style={{ objectFit: 'contain' }}
         />
+        {/* 複数画像インジケータ */}
+        {textbook.imageUrls && textbook.imageUrls.length > 1 && (
+          <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+            +{textbook.imageUrls.length - 1}
+          </div>
+        )}
         {/* 取引状態バッジ */}
         {(isSold || isReserved) && (
           <div className="absolute top-2 right-2">

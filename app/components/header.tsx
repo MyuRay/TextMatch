@@ -4,6 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/lib/useAuth"
 import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebaseAuth"
@@ -11,9 +12,14 @@ import { getUserUnreadMessageCount } from "@/lib/firestore"
 import { Heart, MessageSquare, Menu, X } from "lucide-react"
 
 export function Header() {
-  const { user, loading } = useAuth()
+  const { user, userProfile, loading } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+
+  const getInitials = (name?: string) => {
+    if (!name) return "U"
+    return name.charAt(0).toUpperCase()
+  }
 
   const handleLogout = async () => {
     await signOut(auth)
@@ -87,7 +93,15 @@ export function Header() {
                 )}
               </Link>
               <Link href="/mypage">
-                <Button variant="outline" size="sm">マイページ</Button>
+                <Button variant="outline" size="sm" className="flex items-center gap-2 border-2 hover:bg-primary/5">
+                  <Avatar className="w-6 h-6">
+                    <AvatarImage src={userProfile?.avatarUrl || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                      {getInitials(userProfile?.fullName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="hidden md:inline text-sm font-medium">マイページ</span>
+                </Button>
               </Link>
               <Button onClick={handleLogout} size="sm" className="bg-red-500 text-white">
                 ログアウト
@@ -153,7 +167,15 @@ export function Header() {
                   )}
                 </Link>
                 <Link href="/mypage" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="outline" className="w-full justify-start">マイページ</Button>
+                  <Button variant="outline" className="w-full justify-start flex items-center gap-3 border-2 hover:bg-primary/5">
+                    <Avatar className="w-7 h-7">
+                      <AvatarImage src={userProfile?.avatarUrl || undefined} />
+                      <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                        {getInitials(userProfile?.fullName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="font-medium">マイページ</span>
+                  </Button>
                 </Link>
                 <Button onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} className="bg-red-500 text-white w-full">
                   ログアウト

@@ -11,9 +11,11 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Header } from "../components/header"
 import { Footer } from "../components/footer"
+import { AvatarUpload } from "../components/avatar-upload"
 import { Eye, EyeOff } from "lucide-react"
 import { registerUser } from "@/lib/firebaseAuth"
 import { saveUserProfile } from "@/lib/firestore"
+import { uploadAvatar } from "@/lib/storage"
 
 // 日本全国の大学リスト
 const UNIVERSITIES = [
@@ -129,6 +131,7 @@ export default function RegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showUniversitySuggestions, setShowUniversitySuggestions] = useState(false)
   const [universitySuggestions, setUniversitySuggestions] = useState<string[]>([])
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -202,11 +205,25 @@ export default function RegisterPage() {
       const user = await registerUser(formData.email, formData.password)
       console.log("Firebase Auth登録成功:", user.uid)
 
+      // アバター画像をアップロード
+      let avatarUrl = ""
+      if (avatarFile) {
+        try {
+          console.log("アバター画像アップロード開始...")
+          avatarUrl = await uploadAvatar(avatarFile, user.uid)
+          console.log("アバター画像アップロード成功:", avatarUrl)
+        } catch (avatarError) {
+          console.error("アバター画像アップロードエラー:", avatarError)
+          // アバターのアップロードに失敗しても登録は続行
+        }
+      }
+
       await saveUserProfile(user.uid, {
         fullName: formData.fullName,
         email: formData.email,
         university: formData.university,
         department: formData.department,
+        avatarUrl: avatarUrl,
       })
       console.log("プロフィール保存成功")
 
@@ -250,6 +267,15 @@ export default function RegisterPage() {
                 <Label htmlFor="fullName">氏名</Label>
                 <Input id="fullName" name="fullName" placeholder="山田 太郎" value={formData.fullName} onChange={handleChange} />
                 {errors.fullName && <p className="text-sm text-destructive">{errors.fullName}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label>プロフィール画像（任意）</Label>
+                <AvatarUpload 
+                  avatarFile={avatarFile}
+                  setAvatarFile={setAvatarFile}
+                  userName={formData.fullName}
+                />
               </div>
 
               <div className="space-y-2">

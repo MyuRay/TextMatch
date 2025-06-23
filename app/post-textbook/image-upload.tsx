@@ -1,33 +1,49 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Image from "next/image"
 import { X } from "lucide-react"
 
 interface ImageUploadProps {
-  image: File | null
-  setImage: (file: File | null) => void
-  imagePreview: string | null
-  setImagePreview: (preview: string | null) => void
+  images: File[]
+  setImages: (files: File[]) => void
+  coverImageUrl?: string // ISBN取得時の表紙画像URL
+  onUseCoverImage?: () => void // 表紙画像使用ボタンのコールバック
 }
 
-export function ImageUpload({ image, setImage, imagePreview, setImagePreview }: ImageUploadProps) {
+export function ImageUpload({ images, setImages, coverImageUrl, onUseCoverImage }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false)
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const maxImages = 5
+
+  useEffect(() => {
+    // 既存のプレビューURLをクリーンアップ
+    imagePreviews.forEach(url => URL.revokeObjectURL(url))
+    
+    // 新しいプレビューURLを作成
+    const newPreviews = images.map(file => URL.createObjectURL(file))
+    setImagePreviews(newPreviews)
+
+    return () => {
+      newPreviews.forEach(url => URL.revokeObjectURL(url))
+    }
+  }, [images])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null
-    if (file) {
-      setImage(file)
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
+    const files = Array.from(e.target.files || [])
+    const imageFiles = files.filter(file => file.type.startsWith("image/"))
+    
+    if (images.length + imageFiles.length > maxImages) {
+      alert(`画像は最大${maxImages}枚まで選択できます`)
+      return
     }
+    
+    setImages([...images, ...imageFiles])
+    // input要素をリセット
+    e.target.value = ''
   }
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -42,26 +58,76 @@ export function ImageUpload({ image, setImage, imagePreview, setImagePreview }: 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-
-    const file = e.dataTransfer.files?.[0] || null
-    if (file && file.type.startsWith("image/")) {
-      setImage(file)
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
+    
+    const files = Array.from(e.dataTransfer.files)
+    const imageFiles = files.filter(file => file.type.startsWith("image/"))
+    
+    if (images.length + imageFiles.length > maxImages) {
+      alert(`画像は最大${maxImages}枚まで選択できます`)
+      return
     }
+    
+    setImages([...images, ...imageFiles])
   }
 
-  const removeImage = () => {
-    setImage(null)
-    setImagePreview(null)
+  const removeImage = (index: number) => {
+    const newImages = images.filter((_, i) => i !== index)
+    setImages(newImages)
+  }
+
+  const moveImage = (fromIndex: number, toIndex: number) => {
+    const newImages = [...images]
+    const [movedImage] = newImages.splice(fromIndex, 1)
+    newImages.splice(toIndex, 0, movedImage)
+    setImages(newImages)
   }
 
   return (
     <div className="space-y-4">
-      {!imagePreview ? (
+      {/* ISBN取得時の表紙画像プレビュー */}
+      {coverImageUrl && images.length === 0 && (
+        <div className="border rounded-lg p-4 bg-blue-50">
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-28 flex-shrink-0 bg-gray-100 rounded border flex items-center justify-center">
+              <Image 
+                src={coverImageUrl} 
+                alt="書籍表紙" 
+                width={80} 
+                height={112}
+                className="w-full h-full object-contain rounded"
+                style={{ objectFit: 'contain' }}
+              />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-blue-900 mb-2">ISBNから表紙画像を取得しました</p>
+              <p className="text-xs text-blue-700 mb-3">この画像を商品画像として使用できます</p>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={onUseCoverImage}
+                  type="button"
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  この表紙を使用
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => window.open(coverImageUrl, '_blank')}
+                  type="button"
+                  className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                >
+                  画像を保存
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 画像選択エリア */}
+      {images.length < maxImages && (
         <div
           className={`border-2 border-dashed rounded-lg p-6 text-center ${
             isDragging ? "border-primary bg-primary/5" : "border-gray-300"
@@ -71,28 +137,66 @@ export function ImageUpload({ image, setImage, imagePreview, setImagePreview }: 
           onDrop={handleDrop}
         >
           <div className="flex flex-col items-center justify-center space-y-2">
-            <div className="text-sm text-muted-foreground">Drag and drop an image, or click to browse</div>
-            <Input id="image-upload" type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+            <div className="text-sm text-muted-foreground">
+              画像を選択してください（{images.length}/{maxImages}枚）
+            </div>
+            <div className="text-xs text-muted-foreground">
+              複数選択可能・ドラッグ&ドロップ対応
+            </div>
+            <Input 
+              id="image-upload" 
+              type="file" 
+              accept="image/*" 
+              multiple 
+              className="hidden" 
+              onChange={handleImageChange} 
+            />
             <Button variant="outline" onClick={() => document.getElementById("image-upload")?.click()} type="button">
-              Select Image
+              画像を選択
             </Button>
           </div>
         </div>
-      ) : (
-        <div className="relative">
-          <div className="relative aspect-video w-full overflow-hidden rounded-lg">
-            <Image src={imagePreview || "/placeholder.svg"} alt="Textbook preview" fill className="object-cover" />
+      )}
+
+      {/* 選択された画像一覧 */}
+      {images.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium">選択された画像 ({images.length}/{maxImages}枚)</h4>
+            <div className="text-xs text-muted-foreground">最初の画像がメイン画像になります</div>
           </div>
-          <Button
-            variant="destructive"
-            size="icon"
-            className="absolute -right-2 -top-2 h-8 w-8 rounded-full"
-            onClick={removeImage}
-            type="button"
-          >
-            <X className="h-4 w-4" />
-            <span className="sr-only">Remove image</span>
-          </Button>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {imagePreviews.map((preview, index) => (
+              <div key={index} className="relative group">
+                <div className="relative aspect-square overflow-hidden rounded-lg border bg-gray-100 flex items-center justify-center">
+                  <Image
+                    src={preview}
+                    alt={`画像 ${index + 1}`}
+                    fill
+                    className="object-contain"
+                    style={{ objectFit: 'contain' }}
+                  />
+                  {index === 0 && (
+                    <div className="absolute top-1 left-1 bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                      メイン
+                    </div>
+                  )}
+                </div>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -right-2 -top-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => removeImage(index)}
+                  type="button"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+                <div className="absolute bottom-1 right-1 bg-black/50 text-white text-xs px-1 rounded">
+                  {index + 1}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

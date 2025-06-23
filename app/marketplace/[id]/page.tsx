@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator"
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog"
 import { Header } from "@/app/components/header"
 import { Footer } from "@/app/components/footer"
+import { ImageGallery } from "@/app/components/image-gallery"
 import { getTextbookById, getUserNickname, createOrGetConversation, Textbook, isFavorite, addToFavorites, removeFromFavorites } from "@/lib/firestore"
 import { formatDate } from "@/lib/utils"
 import { useAuth } from "@/lib/useAuth"
@@ -129,15 +130,10 @@ export default function TextbookDetailPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-4">
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg border bg-muted">
-              <Image
-                src={textbook.imageUrl || "/placeholder.svg?height=600&width=800"}
-                alt={textbook.title}
-                fill
-                className="object-cover"
-                priority
-              />
-            </div>
+            <ImageGallery 
+              images={textbook.imageUrls || (textbook.imageUrl ? [textbook.imageUrl] : [])}
+              title={textbook.title}
+            />
             <div className="flex items-center justify-between">
               <div className="flex items-center text-sm text-muted-foreground">
                 <Calendar className="mr-1 h-4 w-4" />

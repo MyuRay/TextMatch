@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore"
+import { collection, doc, getDoc, getDocs, query, where, setDoc } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import { useAuth } from "@/lib/useAuth"
 import { Textbook, UserProfile, getUserFavorites, getUserPurchases, getUserSellingBooks, createOrGetConversation, removeFromFavorites } from "@/lib/firestore"
+import { uploadAvatar } from "@/lib/storage"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle
 } from "@/components/ui/card"
@@ -15,7 +17,7 @@ import {
   Avatar, AvatarFallback, AvatarImage
 } from "@/components/ui/avatar"
 import {
-  BookOpen, Edit, Heart, MessageSquare, Package, Settings, ShoppingBag, Trash2
+  BookOpen, Edit, Heart, MessageSquare, Package, Settings, ShoppingBag, Trash2, Camera, X
 } from "lucide-react"
 import { Header } from "../components/header"
 import { Footer } from "../components/footer"
@@ -161,7 +163,6 @@ export default function MyPage() {
                 <div className="flex-1">
                   <h2 className="text-lg font-bold">{userData.fullName}</h2>
                   <p className="text-sm text-muted-foreground">{userData.university}</p>
-                  <p className="text-sm text-muted-foreground">{userData.department}</p>
                 </div>
               </div>
               <div className="mt-4">
@@ -199,7 +200,6 @@ export default function MyPage() {
                   <div className="text-center space-y-1">
                     <h2 className="text-xl font-bold">{userData.fullName}</h2>
                     <p className="text-sm text-muted-foreground">{userData.university}</p>
-                    <p className="text-sm text-muted-foreground">{userData.department}</p>
                   </div>
                 </div>
                 <div className="mt-6 space-y-2">
@@ -286,19 +286,237 @@ function TabButton({ label, icon, active, onClick, mobile = false }: {
 }
 
 function ProfileCard({ user }: { user: UserProfile }) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editData, setEditData] = useState({
+    fullName: user.fullName,
+    university: user.university,
+  })
+  const [isLoading, setIsLoading] = useState(false)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const { user: authUser } = useAuth()
+
+  // アバターファイルが変更された時のプレビュー更新
+  useEffect(() => {
+    if (!avatarFile) {
+      setAvatarPreview(null)
+      return
+    }
+
+    const objectUrl = URL.createObjectURL(avatarFile)
+    setAvatarPreview(objectUrl)
+
+    return () => URL.revokeObjectURL(objectUrl)
+  }, [avatarFile])
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        alert("画像ファイルを選択してください")
+        return
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert("ファイルサイズは5MB以下にしてください")
+        return
+      }
+      setAvatarFile(file)
+    }
+  }
+
+  const removeAvatar = () => {
+    setAvatarFile(null)
+    setAvatarPreview(null)
+  }
+
+  const getInitials = (name: string) => {
+    return name.charAt(0).toUpperCase()
+  }
+
+  const handleSave = async () => {
+    if (!authUser) return
+    
+    setIsLoading(true)
+    try {
+      let newAvatarUrl = user.avatarUrl
+
+      // アバター画像がアップロードされた場合
+      if (avatarFile) {
+        try {
+          console.log("アバター画像アップロード開始...")
+          newAvatarUrl = await uploadAvatar(avatarFile, authUser.uid)
+          console.log("アバター画像アップロード成功:", newAvatarUrl)
+        } catch (avatarError) {
+          console.error("アバター画像アップロードエラー:", avatarError)
+          alert("アバター画像のアップロードに失敗しました")
+          setIsLoading(false)
+          return
+        }
+      }
+
+      // Firestoreのプロフィールを更新
+      const userRef = doc(db, "users", authUser.uid)
+      await setDoc(userRef, {
+        ...user,
+        fullName: editData.fullName,
+        university: editData.university,
+        avatarUrl: newAvatarUrl,
+      }, { merge: true })
+      
+      setIsEditing(false)
+      setAvatarFile(null)
+      setAvatarPreview(null)
+      alert("プロフィールを更新しました")
+      // ページを再読み込みして最新データを表示
+      window.location.reload()
+    } catch (error) {
+      console.error("プロフィール更新エラー:", error)
+      alert("プロフィールの更新に失敗しました")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCancel = () => {
+    setEditData({
+      fullName: user.fullName,
+      university: user.university,
+    })
+    setAvatarFile(null)
+    setAvatarPreview(null)
+    setIsEditing(false)
+  }
+
   return (
     <Card>
       <CardHeader><CardTitle>プロフィール</CardTitle></CardHeader>
-      <CardContent className="space-y-2">
-        <p><strong>名前：</strong>{user.fullName}</p>
-        <p><strong>メール：</strong>{user.email}</p>
-        <p><strong>学籍番号：</strong>{user.studentId}</p>
-        <p><strong>大学：</strong>{user.university}</p>
-        <p><strong>学部：</strong>{user.department || "未設定"}</p>
-        <p><strong>登録日：</strong>{user.createdAt?.toDate?.()?.toLocaleDateString() || "不明"}</p>
+      <CardContent className="space-y-4">
+        {/* アバター編集セクション */}
+        {isEditing && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">プロフィール画像</label>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Avatar className="w-20 h-20">
+                  <AvatarImage src={avatarPreview || user.avatarUrl || undefined} />
+                  <AvatarFallback className="text-2xl bg-primary/10 text-primary">
+                    {getInitials(user.fullName)}
+                  </AvatarFallback>
+                </Avatar>
+                {avatarPreview && (
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                    onClick={removeAvatar}
+                    type="button"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <Input
+                  id="avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => document.getElementById("avatar-upload")?.click()}
+                  type="button"
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  画像を選択
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  JPG, PNG (最大5MB)
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isEditing ? (
+          <>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">名前</label>
+              <Input
+                value={editData.fullName}
+                onChange={(e) => setEditData(prev => ({ ...prev, fullName: e.target.value }))}
+                placeholder="名前を入力"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">大学</label>
+              <Input
+                value={editData.university}
+                onChange={(e) => setEditData(prev => ({ ...prev, university: e.target.value }))}
+                placeholder="大学名を入力"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">メール（変更不可）</label>
+              <Input value={user.email} disabled />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">登録日</label>
+              <Input value={user.createdAt?.toDate?.()?.toLocaleDateString() || "不明"} disabled />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="space-y-3">
+              <div className="flex items-center gap-4">
+                <Avatar className="w-16 h-16">
+                  <AvatarImage src={user.avatarUrl || undefined} />
+                  <AvatarFallback className="text-xl bg-primary/10 text-primary">
+                    {getInitials(user.fullName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">プロフィール画像</p>
+                  <p className="text-base">{user.avatarUrl ? "設定済み" : "未設定"}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">名前</p>
+                <p className="text-base">{user.fullName}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">大学</p>
+                <p className="text-base">{user.university}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">メール</p>
+                <p className="text-base">{user.email}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">登録日</p>
+                <p className="text-base">{user.createdAt?.toDate?.()?.toLocaleDateString() || "不明"}</p>
+              </div>
+            </div>
+          </>
+        )}
       </CardContent>
-      <CardFooter>
-        <Button variant="outline"><Edit className="mr-2 h-4 w-4" />プロフィールを編集</Button>
+      <CardFooter className="flex gap-2">
+        {isEditing ? (
+          <>
+            <Button onClick={handleSave} disabled={isLoading} className="flex-1">
+              {isLoading ? "保存中..." : "保存"}
+            </Button>
+            <Button variant="outline" onClick={handleCancel} disabled={isLoading} className="flex-1">
+              キャンセル
+            </Button>
+          </>
+        ) : (
+          <Button variant="outline" onClick={() => setIsEditing(true)} className="w-full">
+            <Edit className="mr-2 h-4 w-4" />プロフィールを編集
+          </Button>
+        )}
       </CardFooter>
     </Card>
   )
