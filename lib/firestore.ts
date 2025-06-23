@@ -52,6 +52,9 @@ export interface Conversation {
   sellerId: string
   bookId: string
   createdAt: Timestamp
+  lastMessage?: string
+  lastMessageAt?: Timestamp
+  unreadCount?: { [userId: string]: number }
 }
 
 export interface Favorite {
@@ -416,5 +419,51 @@ export const getUserSellingBooks = async (userId: string): Promise<Textbook[]> =
       userId
     })
     return []
+  }
+}
+
+// ✅ ユーザーの未読メッセージ数を取得
+export const getUserUnreadMessageCount = async (userId: string): Promise<number> => {
+  try {
+    console.log("未読メッセージ数取得開始:", userId)
+    
+    // ユーザーが参加している会話を取得
+    const conversationsRef = collection(db, "conversations")
+    const userConversationsQuery = query(
+      conversationsRef,
+      where("buyerId", "==", userId)
+    )
+    const sellerConversationsQuery = query(
+      conversationsRef,
+      where("sellerId", "==", userId)
+    )
+    
+    const [buyerSnapshot, sellerSnapshot] = await Promise.all([
+      getDocs(userConversationsQuery),
+      getDocs(sellerConversationsQuery)
+    ])
+    
+    const conversationIds = new Set([
+      ...buyerSnapshot.docs.map(doc => doc.id),
+      ...sellerSnapshot.docs.map(doc => doc.id)
+    ])
+    
+    let totalUnreadCount = 0
+    
+    // 各会話の未読メッセージ数を計算
+    for (const conversationId of conversationIds) {
+      const conversationDoc = await getDoc(doc(db, "conversations", conversationId))
+      if (conversationDoc.exists()) {
+        const data = conversationDoc.data()
+        const unreadCount = data.unreadCount?.[userId] || 0
+        totalUnreadCount += unreadCount
+      }
+    }
+    
+    console.log("総未読メッセージ数:", totalUnreadCount)
+    return totalUnreadCount
+  } catch (error) {
+    console.error("未読メッセージ数取得失敗:", error)
+    return 0
   }
 }

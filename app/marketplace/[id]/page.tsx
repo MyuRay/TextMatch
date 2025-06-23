@@ -192,7 +192,7 @@ export default function TextbookDetailPage() {
                   <MapPin className="h-5 w-5 mr-2 text-muted-foreground shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium">希望取引場所</p>
-                    <p className="text-muted-foreground">{textbook.university || "キャンパス内"}</p>
+                    <p className="text-muted-foreground">{textbook.meetupLocation || textbook.university || "キャンパス内"}</p>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -200,6 +200,9 @@ export default function TextbookDetailPage() {
                   <div>
                     <p className="font-medium">出品者</p>
                     <p className="text-muted-foreground">{sellerName || "不明"}</p>
+                    {textbook.university && (
+                      <p className="text-xs text-muted-foreground">{textbook.university}</p>
+                    )}
                   </div>
                 </div>
               </div>

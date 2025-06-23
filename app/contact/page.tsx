@@ -27,7 +27,7 @@ export default function ContactPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <a
-                  href="https://instagram.com/masato._.2004"
+                  href="https://instagram.com/masato.__.2004"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors group"
@@ -35,7 +35,7 @@ export default function ContactPage() {
                   <Instagram className="h-8 w-8 group-hover:scale-110 transition-transform" />
                   <div>
                     <p className="font-semibold text-lg">Instagram</p>
-                    <p className="text-sm opacity-90">@masato._.2004</p>
+                    <p className="text-sm opacity-90">@masato.__.2004</p>
                     <p className="text-xs opacity-75 mt-1">DMでお気軽にご連絡ください</p>
                   </div>
                 </a>

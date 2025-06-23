@@ -2,16 +2,18 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/useAuth"
 import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebaseAuth"
+import { getUserUnreadMessageCount } from "@/lib/firestore"
 import { Heart, MessageSquare, Menu, X } from "lucide-react"
 
 export function Header() {
   const { user, loading } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   const handleLogout = async () => {
     await signOut(auth)
@@ -21,6 +23,30 @@ export function Header() {
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)
   }
+
+  // 未読メッセージ数を定期的に取得
+  useEffect(() => {
+    if (!user) {
+      setUnreadCount(0)
+      return
+    }
+
+    const fetchUnreadCount = async () => {
+      try {
+        const count = await getUserUnreadMessageCount(user.uid)
+        setUnreadCount(count)
+      } catch (error) {
+        console.error("未読メッセージ数取得エラー:", error)
+      }
+    }
+
+    fetchUnreadCount()
+    
+    // 30秒ごとに未読数を更新
+    const interval = setInterval(fetchUnreadCount, 30000)
+    
+    return () => clearInterval(interval)
+  }, [user])
 
   return (
     <header className="border-b">
@@ -51,9 +77,14 @@ export function Header() {
 
           {!loading && user ? (
             <>
-              <Link href="/messages" className="hover:underline flex items-center gap-1">
+              <Link href="/messages" className="hover:underline flex items-center gap-1 relative">
                 <MessageSquare className="h-4 w-4" />
                 メッセージ
+                {unreadCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </Link>
               <Link href="/mypage">
                 <Button variant="outline" size="sm">マイページ</Button>
@@ -112,9 +143,14 @@ export function Header() {
 
             {!loading && user ? (
               <>
-                <Link href="/messages" className="hover:underline flex items-center gap-2 py-2" onClick={() => setIsMobileMenuOpen(false)}>
+                <Link href="/messages" className="hover:underline flex items-center gap-2 py-2 relative" onClick={() => setIsMobileMenuOpen(false)}>
                   <MessageSquare className="h-4 w-4" />
                   メッセージ
+                  {unreadCount > 0 && (
+                    <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center ml-auto">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
                 </Link>
                 <Link href="/mypage" onClick={() => setIsMobileMenuOpen(false)}>
                   <Button variant="outline" className="w-full justify-start">マイページ</Button>

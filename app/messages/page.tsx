@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore"
+import { collection, getDocs, query, where, doc, getDoc, orderBy, limit } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import { useAuth } from "@/lib/useAuth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,6 +14,51 @@ import Link from "next/link"
 import { Header } from "../components/header"
 import { Footer } from "../components/footer"
 import { getUserProfile, getTextbookById } from "@/lib/firestore"
+
+// 最新メッセージを取得するヘルパー関数
+const getLatestMessage = async (conversationId: string) => {
+  try {
+    console.log("最新メッセージ取得開始 - 会話ID:", conversationId)
+    const messagesRef = collection(db, "conversations", conversationId, "messages")
+    const q = query(messagesRef, orderBy("createdAt", "desc"), limit(1))
+    const snapshot = await getDocs(q)
+    
+    console.log("スナップショット結果:", {
+      empty: snapshot.empty,
+      size: snapshot.size,
+      docs: snapshot.docs.length
+    })
+    
+    if (snapshot.empty) {
+      console.log("メッセージが見つかりませんでした")
+      return null
+    }
+    
+    const messageData = snapshot.docs[0].data()
+    console.log("最新メッセージの生データ:", messageData)
+    console.log("メッセージフィールド:", {
+      content: messageData.content,
+      message: messageData.message,
+      text: messageData.text,
+      senderId: messageData.senderId,
+      createdAt: messageData.createdAt
+    })
+    
+    return {
+      content: messageData.text || messageData.content || messageData.message || "",
+      createdAt: messageData.createdAt,
+      senderId: messageData.senderId
+    }
+  } catch (error) {
+    console.error("最新メッセージ取得エラー:", error)
+    console.error("エラーの詳細:", {
+      code: (error as any)?.code,
+      message: (error as any)?.message,
+      conversationId
+    })
+    return null
+  }
+}
 
 export default function MessagesPage() {
   const [conversations, setConversations] = useState<any[]>([])
@@ -58,10 +103,13 @@ export default function MessagesPage() {
           uniqueConversations.map(async (conv) => {
             try {
               const otherUserId = conv.buyerId === user.uid ? conv.sellerId : conv.buyerId
-              const [otherUserProfile, textbook] = await Promise.all([
+              const [otherUserProfile, textbook, latestMessage] = await Promise.all([
                 getUserProfile(otherUserId),
-                getTextbookById(conv.bookId)
+                getTextbookById(conv.bookId),
+                getLatestMessage(conv.id)
               ])
+              
+              console.log(`会話${conv.id}の最新メッセージ:`, latestMessage)
               
               return {
                 ...conv,
@@ -69,7 +117,9 @@ export default function MessagesPage() {
                 otherUserAvatar: otherUserProfile?.avatarUrl,
                 textbook,
                 otherUserId,
-                role: conv.buyerId === user.uid ? 'buyer' : 'seller'
+                role: conv.buyerId === user.uid ? 'buyer' : 'seller',
+                unreadCount: conv.unreadCount?.[user.uid] || 0,
+                latestMessage: latestMessage
               }
             } catch (error) {
               console.error("会話詳細取得エラー:", error)
@@ -78,13 +128,22 @@ export default function MessagesPage() {
                 otherUserName: "不明",
                 textbook: null,
                 otherUserId: conv.buyerId === user.uid ? conv.sellerId : conv.buyerId,
-                role: conv.buyerId === user.uid ? 'buyer' : 'seller'
+                role: conv.buyerId === user.uid ? 'buyer' : 'seller',
+                unreadCount: conv.unreadCount?.[user.uid] || 0,
+                latestMessage: null
               }
             }
           })
         )
         
-        setConversations(enrichedConversations)
+        // 最新のメッセージ順に並び替え（latestMessage.createdAt、lastMessageAt、またはcreatedAtの降順）
+        const sortedConversations = enrichedConversations.sort((a, b) => {
+          const aTime = a.latestMessage?.createdAt?.seconds || a.lastMessageAt?.seconds || a.createdAt?.seconds || 0
+          const bTime = b.latestMessage?.createdAt?.seconds || b.lastMessageAt?.seconds || b.createdAt?.seconds || 0
+          return bTime - aTime // 降順（新しい順）
+        })
+        
+        setConversations(sortedConversations)
       } catch (error) {
         console.error("会話取得エラー:", error)
       } finally {
@@ -128,7 +187,7 @@ export default function MessagesPage() {
         ) : (
           <div className="space-y-3">
             {conversations.map((conv) => (
-              <Card key={conv.id} className="hover:shadow-md transition-shadow cursor-pointer">
+              <Card key={conv.id} className={`hover:shadow-md transition-shadow cursor-pointer ${conv.unreadCount > 0 ? 'ring-2 ring-blue-200 bg-blue-50/30' : ''}`}>
                 <Link href={`/messages/${conv.id}`} className="block">
                   <CardContent className="p-6">
                     <div className="flex items-start gap-4">
@@ -146,10 +205,15 @@ export default function MessagesPage() {
                             <Badge variant={conv.role === 'buyer' ? 'default' : 'secondary'} className="text-xs">
                               {conv.role === 'buyer' ? '購入希望' : '出品者'}
                             </Badge>
+                            {conv.unreadCount > 0 && (
+                              <Badge variant="destructive" className="text-xs">
+                                {conv.unreadCount > 99 ? '99+' : conv.unreadCount}
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex items-center text-xs text-muted-foreground">
                             <Clock className="h-3 w-3 mr-1" />
-                            {conv.createdAt?.toDate?.()?.toLocaleDateString() || "不明"}
+                            {(conv.latestMessage?.createdAt || conv.lastMessageAt || conv.createdAt)?.toDate?.()?.toLocaleDateString() || "不明"}
                           </div>
                         </div>
                         
@@ -163,13 +227,38 @@ export default function MessagesPage() {
                           </div>
                         )}
                         
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm text-muted-foreground truncate">
-                            {conv.lastMessage || "まだメッセージがありません"}
-                          </p>
-                          <Button size="sm" variant="ghost" className="ml-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            {conv.latestMessage && conv.latestMessage.content ? (
+                              <div className="space-y-1">
+                                <p className={`text-sm ${conv.unreadCount > 0 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                                  <span className={conv.latestMessage.senderId === user.uid ? "text-blue-600 font-medium" : "font-medium"}>
+                                    {conv.latestMessage.senderId === user.uid ? "あなた" : conv.otherUserName}:
+                                  </span>
+                                  <span className="ml-1">{conv.latestMessage.content}</span>
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {conv.latestMessage.createdAt?.toDate?.()?.toLocaleString('ja-JP', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  }) || ""}
+                                </p>
+                              </div>
+                            ) : conv.lastMessage ? (
+                              <p className="text-sm text-muted-foreground truncate">
+                                {conv.lastMessage}
+                              </p>
+                            ) : (
+                              <p className="text-sm text-muted-foreground italic">
+                                まだメッセージがありません
+                              </p>
+                            )}
+                          </div>
+                          <Button size="sm" variant="ghost" className="flex-shrink-0">
                             <MessageSquare className="h-4 w-4 mr-1" />
-                            チャット
+                            <span className="hidden sm:inline">チャット</span>
                           </Button>
                         </div>
                       </div>
