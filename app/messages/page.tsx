@@ -232,8 +232,8 @@ export default function MessagesPage() {
                             {conv.latestMessage && conv.latestMessage.content ? (
                               <div className="space-y-1">
                                 <p className={`text-sm ${conv.unreadCount > 0 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
-                                  <span className={conv.latestMessage.senderId === user.uid ? "text-blue-600 font-medium" : "font-medium"}>
-                                    {conv.latestMessage.senderId === user.uid ? "あなた" : conv.otherUserName}:
+                                  <span className={conv.latestMessage.senderId === user?.uid ? "text-blue-600 font-medium" : "font-medium"}>
+                                    {conv.latestMessage.senderId === user?.uid ? "あなた" : conv.otherUserName}:
                                   </span>
                                   <span className="ml-1">{conv.latestMessage.content}</span>
                                 </p>
