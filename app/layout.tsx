@@ -5,8 +5,12 @@ import { AuthProvider } from "@/lib/useAuth" // ←パスが通っているか�
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Campus Books",
-  description: "大学生向け教科書売買アプリ",
+  title: "TextMatch",
+  description: "学生のためのフリーマーケット - 教科書の売買ができるプラットフォーム",
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

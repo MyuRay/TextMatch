@@ -71,12 +71,12 @@ export default function MarketplacePage() {
     <div className="flex flex-col min-h-screen">
       <Header />
 
-      <div className="container mx-auto py-6 px-4 md:px-6">
-        <h1 className="text-3xl font-bold mb-6">出品一覧</h1>
+      <div className="container mx-auto py-4 md:py-6 px-4 md:px-6">
+        <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6">出品一覧</h1>
 
-        {/* ✅ 検索バー復活 */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="relative flex-grow">
+        {/* 検索バー */}
+        <div className="mb-4 md:mb-6">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="タイトル・著者・大学名で検索..."
@@ -87,12 +87,13 @@ export default function MarketplacePage() {
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        {/* フィルタとソート */}
+        <div className="flex flex-col gap-3 mb-4 md:mb-6">
           <Tabs defaultValue="newest" onValueChange={setSortBy}>
-            <TabsList className="grid grid-cols-3 w-full md:w-auto">
-              <TabsTrigger value="newest">新着順</TabsTrigger>
-              <TabsTrigger value="price-low">価格（安い順）<ArrowUpDown className="ml-1 h-3 w-3" /></TabsTrigger>
-              <TabsTrigger value="price-high">価格（高い順）</TabsTrigger>
+            <TabsList className="grid grid-cols-3 w-full h-9">
+              <TabsTrigger value="newest" className="text-xs md:text-sm">新着順</TabsTrigger>
+              <TabsTrigger value="price-low" className="text-xs md:text-sm">安い順<ArrowUpDown className="ml-1 h-3 w-3" /></TabsTrigger>
+              <TabsTrigger value="price-high" className="text-xs md:text-sm">高い順</TabsTrigger>
             </TabsList>
           </Tabs>
           

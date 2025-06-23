@@ -146,10 +146,49 @@ export default function MyPage() {
   return (
     <>
       <Header />
-      <div className="max-w-5xl mx-auto py-16 px-4">
-        <h1 className="text-3xl font-bold mb-8 text-center">マイページ</h1>
+      <div className="max-w-5xl mx-auto py-8 px-4">
+        <h1 className="text-2xl md:text-3xl font-bold mb-6 text-center">マイページ</h1>
+        
+        {/* Mobile Profile Header */}
+        <div className="md:hidden mb-6">
+          <Card className="shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-4">
+                <Avatar className="h-16 w-16">
+                  <AvatarImage src={userData.avatarUrl || "/placeholder.svg"} alt={userData.fullName} />
+                  <AvatarFallback>{avatarFallback}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <h2 className="text-lg font-bold">{userData.fullName}</h2>
+                  <p className="text-sm text-muted-foreground">{userData.university}</p>
+                  <p className="text-sm text-muted-foreground">{userData.department}</p>
+                </div>
+              </div>
+              <div className="mt-4">
+                <Link href="/post-textbook">
+                  <Button className="w-full" size="sm">
+                    <BookOpen className="mr-2 h-4 w-4" />教科書を出品する
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Mobile Tab Navigation */}
+        <div className="md:hidden mb-6">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <TabButton label="プロフィール" icon={<Settings />} active={activeTab === "profile"} onClick={() => handleTabChange("profile")} mobile />
+            <TabButton label="出品中" icon={<BookOpen />} active={activeTab === "selling"} onClick={() => handleTabChange("selling")} mobile />
+            <TabButton label="購入履歴" icon={<ShoppingBag />} active={activeTab === "purchased"} onClick={() => handleTabChange("purchased")} mobile />
+            <TabButton label="お気に入り" icon={<Heart />} active={activeTab === "favorites"} onClick={() => handleTabChange("favorites")} mobile />
+            <TabButton label="メッセージ" icon={<MessageSquare />} active={activeTab === "messages"} onClick={() => handleTabChange("messages")} mobile />
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-8">
-          <div className="w-full md:w-60">
+          {/* Desktop Sidebar */}
+          <div className="hidden md:block w-full md:w-60">
             <Card className="shadow-sm">
               <CardContent className="p-6">
                 <div className="flex flex-col items-center space-y-4">
@@ -219,12 +258,26 @@ export default function MyPage() {
   )
 }
 
-function TabButton({ label, icon, active, onClick }: {
+function TabButton({ label, icon, active, onClick, mobile = false }: {
   label: string
   icon: React.ReactNode
   active: boolean
   onClick: () => void
+  mobile?: boolean
 }) {
+  if (mobile) {
+    return (
+      <Button 
+        variant={active ? "default" : "outline"} 
+        className="flex-shrink-0 text-xs whitespace-nowrap" 
+        size="sm"
+        onClick={onClick}
+      >
+        <span className="mr-1">{icon}</span>{label}
+      </Button>
+    )
+  }
+
   return (
     <Button variant={active ? "default" : "ghost"} className="w-full justify-start" onClick={onClick}>
       <span className="mr-2">{icon}</span>{label}
@@ -376,31 +429,32 @@ function BooksListCard({ title, books, isPurchase = false, isEditable = false, f
             )}
           </div>
         ) : books.map((book: any) => (
-          <Card key={book.id} className="p-4">
-            <div className="flex gap-4">
-              <img src={book.imageUrl || "/placeholder.svg"} alt={book.title} className="w-20 h-28 object-cover rounded" />
-              <div className="flex-1">
-                <h3 className="font-bold text-lg">{book.title}</h3>
-                <p className="text-sm text-muted-foreground">{book.author}</p>
-                <p className="text-sm">価格：¥{book.price?.toLocaleString()}</p>
-                {book.status === 'sold' && <p className="text-sm text-red-500">売切済</p>}
-                {book.status === 'reserved' && <p className="text-sm text-yellow-500">予約済</p>}
-                {book.status === 'available' && isEditable && <p className="text-sm text-green-500">出品中</p>}
-                {isPurchase && <p className="text-sm">購入日：{formatPurchaseDate(book.purchasedAt)}</p>}
-                <div className="mt-2 flex gap-2">
+          <Card key={book.id} className="p-3 md:p-4">
+            <div className="flex gap-3 md:gap-4">
+              <img src={book.imageUrl || "/placeholder.svg"} alt={book.title} className="w-16 h-20 md:w-20 md:h-28 object-cover rounded flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-sm md:text-lg truncate">{book.title}</h3>
+                <p className="text-xs md:text-sm text-muted-foreground truncate">{book.author}</p>
+                <p className="text-xs md:text-sm">価格：¥{book.price?.toLocaleString()}</p>
+                {book.status === 'sold' && <p className="text-xs md:text-sm text-red-500">売切済</p>}
+                {book.status === 'reserved' && <p className="text-xs md:text-sm text-yellow-500">予約済</p>}
+                {book.status === 'available' && isEditable && <p className="text-xs md:text-sm text-green-500">出品中</p>}
+                {isPurchase && <p className="text-xs md:text-sm">購入日：{formatPurchaseDate(book.purchasedAt)}</p>}
+                <div className="mt-2 flex flex-col sm:flex-row gap-1 sm:gap-2">
                   {isFavorites && (
                     <>
-                      <Link href={`/marketplace/${book.id}`}>
-                        <Button variant="outline" size="sm">
-                          <BookOpen className="mr-2 h-4 w-4" /> 詳細を見る
+                      <Link href={`/marketplace/${book.id}`} className="flex-1 sm:flex-none">
+                        <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                          <BookOpen className="mr-1 h-3 w-3" /> 詳細
                         </Button>
                       </Link>
                       <Button 
                         variant="outline" 
                         size="sm"
+                        className="w-full sm:w-auto"
                         onClick={() => handleRemoveFromFavorites(book)}
                       >
-                        <Trash2 className="mr-2 h-4 w-4" /> 削除
+                        <Trash2 className="mr-1 h-3 w-3" /> 削除
                       </Button>
                     </>
                   )}
@@ -408,21 +462,22 @@ function BooksListCard({ title, books, isPurchase = false, isEditable = false, f
                     <Button 
                       variant="outline" 
                       size="sm"
+                      className="w-full sm:w-auto"
                       onClick={() => handleMessageSeller(book)}
                     >
-                      <MessageSquare className="mr-2 h-4 w-4" /> 出品者に連絡
+                      <MessageSquare className="mr-1 h-3 w-3" /> 出品者に連絡
                     </Button>
                   )}
                   {isEditable && (
                     <>
-                      <Link href={`/marketplace/${book.id}`}>
-                        <Button variant="outline" size="sm">
-                          <BookOpen className="mr-2 h-4 w-4" /> 詳細を見る
+                      <Link href={`/marketplace/${book.id}`} className="flex-1 sm:flex-none">
+                        <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                          <BookOpen className="mr-1 h-3 w-3" /> 詳細
                         </Button>
                       </Link>
-                      <Link href={`/edit/${book.id}`}>
-                        <Button variant="outline" size="sm">
-                          <Edit className="mr-2 h-4 w-4" /> 編集する
+                      <Link href={`/edit/${book.id}`} className="flex-1 sm:flex-none">
+                        <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                          <Edit className="mr-1 h-3 w-3" /> 編集
                         </Button>
                       </Link>
                     </>
