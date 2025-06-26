@@ -97,7 +97,7 @@ export default function HomePage() {
         <section className="bg-gradient-to-r from-blue-50 to-indigo-50 py-12 md:py-24">
           <div className="container mx-auto px-4 text-center">
             <h1 className="text-2xl md:text-5xl font-bold mb-4 md:mb-6">キャンパスで教科書を手渡そう</h1>
-            <p className="text-base md:text-xl text-muted-foreground mb-3 md:mb-4 max-w-2xl mx-auto">
+            <p className="text-sm md:text-xl text-muted-foreground mb-3 md:mb-4 max-w-2xl mx-auto">
               オンライン✕オフライン 学生のためのフリーマーケット
             </p>
             <div className="mb-6 md:mb-8 p-3 md:p-4 bg-orange-50 border border-orange-200 rounded-lg max-w-2xl mx-auto">

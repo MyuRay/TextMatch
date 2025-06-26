@@ -8,13 +8,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/lib/useAuth"
 import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebaseAuth"
-import { getUserUnreadMessageCount } from "@/lib/firestore"
-import { Heart, MessageSquare, Menu, X } from "lucide-react"
+import { getUserUnreadMessageCount, saveFCMToken } from "@/lib/firestore"
+import { requestNotificationPermission, onForegroundMessage, showNotification } from "@/lib/firebaseMessaging"
+import { Heart, MessageSquare, Menu, X, Bell, BellOff } from "lucide-react"
 
 export function Header() {
   const { user, userProfile, loading } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [notificationEnabled, setNotificationEnabled] = useState(false)
 
   const getInitials = (name?: string) => {
     if (!name) return "U"
@@ -28,6 +30,24 @@ export function Header() {
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)
+  }
+
+  const handleNotificationToggle = async () => {
+    if (!notificationEnabled) {
+      const token = await requestNotificationPermission()
+      if (token && user) {
+        try {
+          await saveFCMToken(user.uid, token)
+          setNotificationEnabled(true)
+          console.log('通知が有効になりました')
+        } catch (error) {
+          console.error('FCMトークン保存エラー:', error)
+        }
+      }
+    } else {
+      setNotificationEnabled(false)
+      console.log('通知が無効になりました')
+    }
   }
 
   // 未読メッセージ数を定期的に取得
@@ -52,6 +72,43 @@ export function Header() {
     const interval = setInterval(fetchUnreadCount, 30000)
     
     return () => clearInterval(interval)
+  }, [user])
+
+  // 通知の初期化とフォアグラウンドメッセージの処理
+  useEffect(() => {
+    if (!user) return
+
+    // 通知許可状態をチェック
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotificationEnabled(Notification.permission === 'granted')
+    }
+
+    // フォアグラウンドメッセージの処理
+    const unsubscribe = onForegroundMessage((payload) => {
+      console.log('フォアグラウンドメッセージ受信:', payload)
+      
+      // 通知表示
+      if (payload.notification) {
+        showNotification(
+          payload.notification.title || '新着メッセージ',
+          payload.notification.body || 'メッセージが届きました',
+          '/messages'
+        )
+      }
+      
+      // 未読数を再取得
+      const fetchUnreadCount = async () => {
+        try {
+          const count = await getUserUnreadMessageCount(user.uid)
+          setUnreadCount(count)
+        } catch (error) {
+          console.error("未読メッセージ数取得エラー:", error)
+        }
+      }
+      fetchUnreadCount()
+    })
+
+    return unsubscribe
   }, [user])
 
   return (
@@ -83,6 +140,19 @@ export function Header() {
 
           {!loading && user ? (
             <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleNotificationToggle}
+                className="flex items-center gap-1"
+                title={notificationEnabled ? "通知を無効にする" : "通知を有効にする"}
+              >
+                {notificationEnabled ? (
+                  <Bell className="h-4 w-4 text-green-600" />
+                ) : (
+                  <BellOff className="h-4 w-4 text-gray-400" />
+                )}
+              </Button>
               <Link href="/messages" className="hover:underline flex items-center gap-1 relative">
                 <MessageSquare className="h-4 w-4" />
                 メッセージ
@@ -157,6 +227,23 @@ export function Header() {
 
             {!loading && user ? (
               <>
+                <Button
+                  variant="ghost"
+                  onClick={handleNotificationToggle}
+                  className="w-full justify-start flex items-center gap-2 py-2"
+                >
+                  {notificationEnabled ? (
+                    <>
+                      <Bell className="h-4 w-4 text-green-600" />
+                      <span>通知ON</span>
+                    </>
+                  ) : (
+                    <>
+                      <BellOff className="h-4 w-4 text-gray-400" />
+                      <span>通知OFF</span>
+                    </>
+                  )}
+                </Button>
                 <Link href="/messages" className="hover:underline flex items-center gap-2 py-2 relative" onClick={() => setIsMobileMenuOpen(false)}>
                   <MessageSquare className="h-4 w-4" />
                   メッセージ

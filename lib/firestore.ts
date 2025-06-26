@@ -486,3 +486,33 @@ export const getUserUnreadMessageCount = async (userId: string): Promise<number>
     return 0
   }
 }
+
+// ✅ FCMトークンを保存
+export const saveFCMToken = async (userId: string, token: string): Promise<void> => {
+  try {
+    const userRef = doc(db, "users", userId)
+    await setDoc(userRef, {
+      fcmToken: token,
+      fcmTokenUpdatedAt: Timestamp.now()
+    }, { merge: true })
+    console.log("FCMトークン保存成功:", token)
+  } catch (error) {
+    console.error("FCMトークン保存失敗:", error)
+    throw error
+  }
+}
+
+// ✅ FCMトークンを取得
+export const getFCMToken = async (userId: string): Promise<string | null> => {
+  try {
+    const userDoc = await getDoc(doc(db, "users", userId))
+    if (userDoc.exists()) {
+      const data = userDoc.data()
+      return data.fcmToken || null
+    }
+    return null
+  } catch (error) {
+    console.error("FCMトークン取得失敗:", error)
+    return null
+  }
+}
