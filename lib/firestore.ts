@@ -33,6 +33,8 @@ export interface Textbook {
   buyerId?: string
   createdAt: Timestamp
   purchasedAt?: Timestamp
+  expirationDate?: string | null
+  genre?: string
 }
 
 export interface UserProfile {

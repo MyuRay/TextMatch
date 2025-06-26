@@ -133,7 +133,7 @@ export default function TextbookDetailPage() {
           <Button variant="ghost" size="sm" className="flex items-center gap-1" asChild>
             <Link href="/marketplace">
               <ArrowLeft className="h-4 w-4" />
-              マーケットプレイスに戻る
+              出品一覧に戻る
             </Link>
           </Button>
         </div>

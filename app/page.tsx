@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -19,6 +19,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("")
   const { user } = useAuth()
   const router = useRouter()
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const fetchBooks = async () => {
@@ -29,6 +30,48 @@ export default function HomePage() {
     }
     fetchBooks()
   }, [])
+
+  // 自動スクロール機能
+  useEffect(() => {
+    const scrollContainer = scrollRef.current
+    if (!scrollContainer || latestBooks.length === 0) return
+
+    let isScrolling = true
+    let scrollPosition = 0
+    const scrollSpeed = 0.9 // ピクセル/フレーム
+    const cardWidth = 256 + 16 // カード幅 + gap
+    const maxScroll = cardWidth * latestBooks.length
+
+    const autoScroll = () => {
+      if (!isScrolling) return
+
+      scrollPosition += scrollSpeed
+      if (scrollPosition >= maxScroll) {
+        scrollPosition = 0
+      }
+      
+      if (scrollContainer) {
+        scrollContainer.scrollLeft = scrollPosition
+      }
+      
+      requestAnimationFrame(autoScroll)
+    }
+
+    const animation = requestAnimationFrame(autoScroll)
+
+    // ホバー時は停止
+    const handleMouseEnter = () => { isScrolling = false }
+    const handleMouseLeave = () => { isScrolling = true }
+
+    scrollContainer.addEventListener('mouseenter', handleMouseEnter)
+    scrollContainer.addEventListener('mouseleave', handleMouseLeave)
+
+    return () => {
+      cancelAnimationFrame(animation)
+      scrollContainer.removeEventListener('mouseenter', handleMouseEnter)
+      scrollContainer.removeEventListener('mouseleave', handleMouseLeave)
+    }
+  }, [latestBooks])
 
   const filteredBooks = allBooks.filter((book) => {
     const query = searchQuery.toLowerCase()
@@ -95,7 +138,88 @@ export default function HomePage() {
                 <Link href="/marketplace">すべて見る</Link>
               </Button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {/* モバイル: 横スクロール、デスクトップ: グリッド */}
+            <div className="md:hidden">
+              <div 
+                ref={scrollRef}
+                className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide"
+                style={{ scrollBehavior: 'auto' }}
+              >
+                {/* 最初のセット */}
+                {latestBooks.map((book) => (
+                  <Card key={book.id} className="flex-none w-64 overflow-hidden transition-all hover:shadow-md">
+                    <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted flex items-center justify-center">
+                      <Image
+                        src={(book.imageUrls && book.imageUrls[0]) || book.imageUrl || "/placeholder.svg"}
+                        alt={book.title}
+                        fill
+                        className="object-contain"
+                        style={{ objectFit: 'contain' }}
+                      />
+                      {/* 複数画像インジケータ */}
+                      {book.imageUrls && book.imageUrls.length > 1 && (
+                        <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                          +{book.imageUrls.length - 1}
+                        </div>
+                      )}
+                    </div>
+                    <CardContent className="p-3 space-y-1">
+                      <h3 className="font-semibold text-sm leading-snug line-clamp-2">{book.title}</h3>
+                      <p className="text-xs text-muted-foreground">{book.author || "著者不明"}</p>
+                      <p className="text-xs text-blue-700 font-medium">
+                        <Link href={`/marketplace?university=${encodeURIComponent(book.university || "")}`}>
+                          {book.university || "大学名不明"}
+                        </Link>
+                      </p>
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="font-bold text-sm text-gray-800">¥{book.price?.toLocaleString?.()}</p>
+                        <Button variant="outline" size="sm" className="text-xs px-2 py-1 h-6" asChild>
+                          <Link href={`/marketplace/${book.id}`}>詳細</Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {/* 複製されたセット（無限スクロール用） */}
+                {latestBooks.map((book) => (
+                  <Card key={`duplicate-${book.id}`} className="flex-none w-64 overflow-hidden transition-all hover:shadow-md">
+                    <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted flex items-center justify-center">
+                      <Image
+                        src={(book.imageUrls && book.imageUrls[0]) || book.imageUrl || "/placeholder.svg"}
+                        alt={book.title}
+                        fill
+                        className="object-contain"
+                        style={{ objectFit: 'contain' }}
+                      />
+                      {/* 複数画像インジケータ */}
+                      {book.imageUrls && book.imageUrls.length > 1 && (
+                        <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                          +{book.imageUrls.length - 1}
+                        </div>
+                      )}
+                    </div>
+                    <CardContent className="p-3 space-y-1">
+                      <h3 className="font-semibold text-sm leading-snug line-clamp-2">{book.title}</h3>
+                      <p className="text-xs text-muted-foreground">{book.author || "著者不明"}</p>
+                      <p className="text-xs text-blue-700 font-medium">
+                        <Link href={`/marketplace?university=${encodeURIComponent(book.university || "")}`}>
+                          {book.university || "大学名不明"}
+                        </Link>
+                      </p>
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="font-bold text-sm text-gray-800">¥{book.price?.toLocaleString?.()}</p>
+                        <Button variant="outline" size="sm" className="text-xs px-2 py-1 h-6" asChild>
+                          <Link href={`/marketplace/${book.id}`}>詳細</Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+            
+            {/* デスクトップ: グリッド */}
+            <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 gap-6">
               {latestBooks.map((book) => (
                 <Card key={book.id} className="overflow-hidden transition-all hover:shadow-md">
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted flex items-center justify-center">
@@ -134,7 +258,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <HowItWorksSection />
+        <HowItWorksSection user={user} />
         <CallToActionSection />
         {!user && <AuthCTASection />}
       </main>
@@ -144,19 +268,21 @@ export default function HomePage() {
   )
 }
 
-function HowItWorksSection() {
+function HowItWorksSection({ user }: { user: any }) {
   return (
     <section className="py-12 md:py-16">
       <div className="container mx-auto px-4">
         <h2 className="text-2xl font-bold mb-8 text-center">利用方法</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        
+        {/* 全デバイス共通: 3列グリッド（モバイルでサイズ調整） */}
+        <div className="grid grid-cols-3 gap-4 md:gap-8">
           {["教科書を出品", "メッセージで連絡", "キャンパスで取引"].map((title, i) => (
             <div className="text-center" key={i}>
-              <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-primary font-bold text-xl">{i + 1}</span>
+              <div className="bg-primary/10 w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-4">
+                <span className="text-primary font-bold text-lg md:text-xl">{i + 1}</span>
               </div>
-              <h3 className="font-bold text-lg mb-2">{title}</h3>
-              <p className="text-muted-foreground">
+              <h3 className="font-bold text-sm md:text-lg mb-1 md:mb-2">{title}</h3>
+              <p className="text-muted-foreground text-xs md:text-base">
                 {
                   ["使わなくなった教科書の情報と写真をアップロードします",
                    "興味のある教科書の出品者とメッセージでやり取りします",
@@ -166,11 +292,14 @@ function HowItWorksSection() {
             </div>
           ))}
         </div>
-        <div className="text-center mt-8">
-          <Button size="lg" asChild>
-            <Link href="/register">今すぐ登録する</Link>
-          </Button>
-        </div>
+        
+        {!user && (
+          <div className="text-center mt-8">
+            <Button size="lg" asChild>
+              <Link href="/register">今すぐ登録する</Link>
+            </Button>
+          </div>
+        )}
       </div>
     </section>
   )

@@ -32,6 +32,8 @@ export default function PostTextbookPage() {
     price: "",
     condition: "",
     meetupLocation: "",
+    expirationDate: "",
+    genre: "",
   })
 
   const [images, setImages] = useState<File[]>([])
@@ -150,6 +152,8 @@ export default function PostTextbookPage() {
         userId: user.uid,
         university,
         sellerName,
+        expirationDate: formData.expirationDate || null,
+        genre: formData.genre,
       })
 
       alert("教科書を出品しました！")
@@ -266,6 +270,20 @@ export default function PostTextbookPage() {
                 <Input id="price" name="price" type="number" value="0" disabled className="bg-gray-100" />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="genre">ジャンル</Label>
+                <Select onValueChange={(value) => handleSelectChange("genre", value)} required>
+                  <SelectTrigger id="genre">
+                    <SelectValue placeholder="ジャンルを選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="textbook">講義参考書</SelectItem>
+                    <SelectItem value="certification">資格書</SelectItem>
+                    <SelectItem value="jobhunting">就活関連書</SelectItem>
+                    <SelectItem value="other">その他</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="condition">状態</Label>
                 <Select onValueChange={(value) => handleSelectChange("condition", value)} required>
                   <SelectTrigger id="condition">
@@ -277,12 +295,38 @@ export default function PostTextbookPage() {
                     <SelectItem value="good">良好</SelectItem>
                     <SelectItem value="fair">普通</SelectItem>
                     <SelectItem value="poor">傷あり</SelectItem>
+                    <SelectItem value="written">書き込みあり</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="meetupLocation">希望取引場所</Label>
-                <Input id="meetupLocation" name="meetupLocation" value={formData.meetupLocation} onChange={handleChange} required />
+                <Input 
+                  id="meetupLocation" 
+                  name="meetupLocation" 
+                  placeholder="安全な取引のため、キャンパス内の人が多い場所を指定してください（例：図書館前、学生食堂など）"
+                  className="text-sm placeholder:text-xs"
+                  value={formData.meetupLocation} 
+                  onChange={handleChange} 
+                  required 
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="expirationDate">出品期限</Label>
+                  <span className="text-sm text-muted-foreground">（任意）</span>
+                </div>
+                <Input 
+                  id="expirationDate" 
+                  name="expirationDate" 
+                  type="date"
+                  value={formData.expirationDate} 
+                  onChange={handleChange}
+                  min={new Date().toISOString().split('T')[0]}
+                />
+                <p className="text-xs text-muted-foreground">
+                  指定した日付以降、この出品は自動的に非表示になります
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>教科書の画像</Label>

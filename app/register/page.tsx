@@ -258,7 +258,7 @@ export default function RegisterPage() {
         <Card className="max-w-md mx-auto">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold text-center">アカウント登録</CardTitle>
-            <CardDescription className="text-center">Campus Booksに登録して教科書の売買を始めましょう</CardDescription>
+            <CardDescription className="text-center">TextMatchに登録して教科書の売買を始めましょう</CardDescription>
           </CardHeader>
 
           <form onSubmit={handleSubmit}>
