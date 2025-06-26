@@ -94,36 +94,36 @@ export default function HomePage() {
       <Header />
 
       <main>
-        <section className="bg-gradient-to-r from-blue-50 to-indigo-50 py-16 md:py-24">
+        <section className="bg-gradient-to-r from-blue-50 to-indigo-50 py-12 md:py-24">
           <div className="container mx-auto px-4 text-center">
-            <h1 className="text-3xl md:text-5xl font-bold mb-6">キャンパスで教科書を手渡そう</h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-4 max-w-2xl mx-auto">
+            <h1 className="text-2xl md:text-5xl font-bold mb-4 md:mb-6">キャンパスで教科書を手渡そう</h1>
+            <p className="text-base md:text-xl text-muted-foreground mb-3 md:mb-4 max-w-2xl mx-auto">
               オンライン✕オフライン 学生のためのフリーマーケット
             </p>
-            <div className="mb-8 p-4 bg-orange-50 border border-orange-200 rounded-lg max-w-2xl mx-auto">
-              <p className="text-orange-800 font-medium">
+            <div className="mb-6 md:mb-8 p-3 md:p-4 bg-orange-50 border border-orange-200 rounded-lg max-w-2xl mx-auto">
+              <p className="text-orange-800 font-medium text-sm md:text-base">
                 🧪 現在テスト運用中です！0円での教科書の取引にご協力をお願いします
               </p>
             </div>
 
-            <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-4 max-w-xl mx-auto mb-10">
+            <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-3 md:gap-4 max-w-xl mx-auto mb-6 md:mb-10">
               <div className="relative flex-grow">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   placeholder="タイトル、著者、大学名で検索..."
-                  className="pl-10"
+                  className="pl-10 h-10 md:h-11"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Button size="lg" type="submit">検索</Button>
+              <Button size="default" className="md:size-lg" type="submit">検索</Button>
             </form>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto">
-              <Button size="lg" className="h-14" asChild>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 max-w-lg mx-auto">
+              <Button size="default" className="h-12 md:h-14 md:size-lg" asChild>
                 <Link href="/marketplace">出品一覧を見る</Link>
               </Button>
-              <Button size="lg" className="h-14" variant="outline" asChild>
+              <Button size="default" className="h-12 md:h-14 md:size-lg" variant="outline" asChild>
                 <Link href="/post-textbook">教科書を出品する</Link>
               </Button>
             </div>

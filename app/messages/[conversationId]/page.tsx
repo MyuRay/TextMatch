@@ -244,11 +244,11 @@ export default function ConversationPage() {
 
       {/* 教科書情報カード */}
       {textbook && (
-        <div className="container mx-auto px-4 py-3">
+        <div className="container mx-auto px-4 py-2">
           <Card className="bg-white">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-16 h-20 bg-muted rounded overflow-hidden flex items-center justify-center">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2">
+                <div className="w-12 h-16 bg-muted rounded overflow-hidden flex items-center justify-center">
                   <img 
                     src={(textbook.imageUrls && textbook.imageUrls[0]) || textbook.imageUrl || "/placeholder.svg"} 
                     alt={textbook.title}
@@ -256,13 +256,13 @@ export default function ConversationPage() {
                     style={{ objectFit: 'contain' }}
                   />
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold">{textbook.title}</h3>
-                  <p className="text-sm text-muted-foreground">{textbook.author}</p>
-                  <p className="text-lg font-bold text-primary">¥{textbook.price?.toLocaleString()}</p>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm truncate">{textbook.title}</h3>
+                  <p className="text-xs text-muted-foreground">{textbook.author}</p>
+                  <p className="text-sm font-bold text-primary">¥{textbook.price?.toLocaleString()}</p>
                 </div>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/marketplace/${textbook.id}`}>詳細を見る</Link>
+                <Button variant="outline" size="sm" className="text-xs px-2 py-1 h-7" asChild>
+                  <Link href={`/marketplace/${textbook.id}`}>詳細</Link>
                 </Button>
               </div>
             </CardContent>
@@ -270,39 +270,35 @@ export default function ConversationPage() {
           
           {/* 出品者向け成約案内・ボタン */}
           {conversation && user && user.uid === conversation.sellerId && (
-            <Card className="bg-blue-50 border-blue-200">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
+            <Card className="bg-blue-50 border-blue-200 mt-2">
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <h4 className="font-medium text-blue-900 mb-2">📋 出品者メニュー</h4>
+                    <h4 className="font-medium text-blue-900 text-sm mb-1">📋 出品者メニュー</h4>
                     {textbook?.status === 'sold' ? (
-                      <div>
-                        <p className="text-sm text-blue-800 mb-3">
-                          この教科書は成約済みです。再度出品する場合は「出品中に戻す」ボタンを押してください。
-                        </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-blue-800">成約済み</p>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="border-green-300 text-green-700 hover:bg-green-50"
+                          className="border-green-300 text-green-700 hover:bg-green-50 text-xs px-2 py-1 h-6"
                           onClick={() => handleStatusChange('available')}
                         >
-                          <RotateCcw className="mr-2 h-4 w-4" />
+                          <RotateCcw className="mr-1 h-3 w-3" />
                           出品中に戻す
                         </Button>
                       </div>
                     ) : (
-                      <div>
-                        <p className="text-sm text-blue-800 mb-3">
-                          取引が決まりましたら「成約済み」ボタンを押して、取引完了をお知らせください。
-                        </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-blue-800">取引完了時</p>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="border-red-300 text-red-700 hover:bg-red-50"
+                          className="border-red-300 text-red-700 hover:bg-red-50 text-xs px-2 py-1 h-6"
                           onClick={() => handleStatusChange('sold')}
                         >
-                          <CheckCircle className="mr-2 h-4 w-4" />
-                          成約済みにする
+                          <CheckCircle className="mr-1 h-3 w-3" />
+                          成約済み
                         </Button>
                       </div>
                     )}
@@ -315,8 +311,8 @@ export default function ConversationPage() {
       )}
 
       {/* メッセージエリア */}
-      <main className="flex-1 container mx-auto px-4 py-4 overflow-y-auto">
-        <div className="space-y-4 max-w-3xl mx-auto">
+      <main className="flex-1 container mx-auto px-4 py-2 overflow-y-auto min-h-0">
+        <div className="space-y-3 max-w-3xl mx-auto">
           {messages.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">まだメッセージがありません</p>
@@ -385,17 +381,17 @@ export default function ConversationPage() {
       </main>
 
       {/* メッセージ入力エリア */}
-      <footer className="bg-white border-t">
-        <div className="container mx-auto px-4 py-3">
+      <footer className="bg-white border-t flex-shrink-0">
+        <div className="container mx-auto px-4 py-2">
           <div className="flex gap-2 max-w-3xl mx-auto">
             <Input
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="メッセージを入力..."
               onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-              className="flex-1"
+              className="flex-1 h-9"
             />
-            <Button onClick={handleSend} disabled={!newMessage.trim()}>
+            <Button onClick={handleSend} disabled={!newMessage.trim()} size="sm" className="h-9">
               <Send className="h-4 w-4" />
             </Button>
           </div>

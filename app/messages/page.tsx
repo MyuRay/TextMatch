@@ -136,8 +136,13 @@ export default function MessagesPage() {
           })
         )
         
+        // 実際にメッセージが存在する会話のみをフィルタリング
+        const conversationsWithMessages = enrichedConversations.filter(conv => 
+          conv.latestMessage && conv.latestMessage.content
+        )
+        
         // 最新のメッセージ順に並び替え（latestMessage.createdAt、lastMessageAt、またはcreatedAtの降順）
-        const sortedConversations = enrichedConversations.sort((a, b) => {
+        const sortedConversations = conversationsWithMessages.sort((a, b) => {
           const aTime = a.latestMessage?.createdAt?.seconds || a.lastMessageAt?.seconds || a.createdAt?.seconds || 0
           const bTime = b.latestMessage?.createdAt?.seconds || b.lastMessageAt?.seconds || b.createdAt?.seconds || 0
           return bTime - aTime // 降順（新しい順）

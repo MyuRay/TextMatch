@@ -159,7 +159,7 @@ export default function MarketplacePage() {
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium">ジャンル:</span>
               <Select value={genreFilter} onValueChange={setGenreFilter}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-28 h-8 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -180,7 +180,7 @@ export default function MarketplacePage() {
         </div>
 
         {filteredTextbooks.length > 0 ? (
-          <div className="grid grid-cols-3 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
             {filteredTextbooks.map((book) => (
               <TextbookCard key={book.id} textbook={book} />
             ))}
