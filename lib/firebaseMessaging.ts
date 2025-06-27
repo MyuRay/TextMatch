@@ -3,11 +3,18 @@ import { app } from './firebaseConfig';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 
-const messaging = getMessaging(app);
+// ブラウザ環境でのみFirebase Messagingを初期化
+const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
 
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || 'BPLjhnpJHUF04RUG5fPbb62j9N4AFn6yh4fBCeIwaGq_efPSfPxnkaqyb0d630bkyX8HOXeIL8BVAR4NiNlMlu4';
 
 export const requestNotificationPermission = async (): Promise<string | null> => {
+  // ブラウザ環境チェック
+  if (typeof window === 'undefined' || !messaging) {
+    console.log('ブラウザ環境ではありません');
+    return null;
+  }
+
   try {
     const permission = await Notification.requestPermission();
     
@@ -61,6 +68,12 @@ export const getFCMToken = async (userId: string): Promise<string | null> => {
 };
 
 export const setupForegroundMessageHandler = () => {
+  // ブラウザ環境チェック
+  if (typeof window === 'undefined' || !messaging) {
+    console.log('ブラウザ環境ではありません');
+    return;
+  }
+
   onMessage(messaging, (payload) => {
     console.log('フォアグラウンドでメッセージを受信:', payload);
     

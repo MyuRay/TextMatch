@@ -155,6 +155,32 @@ export const getUserProfile = async (userId: string): Promise<{name: string, ava
   }
 }
 
+// ✅ 認証用：完全なユーザープロフィール取得
+export const getFullUserProfile = async (userId: string): Promise<UserProfile | null> => {
+  try {
+    const userDoc = await getDoc(doc(db, "users", userId))
+    
+    if (userDoc.exists()) {
+      const data = userDoc.data()
+      return {
+        fullName: data.fullName || "名無し",
+        email: data.email || "",
+        studentId: data.studentId,
+        university: data.university || "",
+        department: data.department,
+        nickname: data.nickname,
+        avatarUrl: data.avatarUrl,
+        createdAt: data.createdAt
+      }
+    } else {
+      return null
+    }
+  } catch (error) {
+    console.error("完全ユーザープロフィール取得失敗:", error)
+    return null
+  }
+}
+
 // ✅ ユーザープロフィールの保存
 export const saveUserProfile = async (uid: string, profile: Omit<UserProfile, 'createdAt'>): Promise<void> => {
   try {

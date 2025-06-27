@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import { onAuthStateChanged, User } from "firebase/auth"
 import { auth } from "./firebaseAuth"
-import { getUserProfile, UserProfile } from "./firestore"
+import { getFullUserProfile, UserProfile } from "./firestore"
 
 interface AuthContextType {
   user: User | null
@@ -11,7 +11,11 @@ interface AuthContextType {
   loading: boolean
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, userProfile: null, loading: true })
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  userProfile: null,
+  loading: true
+})
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
@@ -21,10 +25,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser)
-      
+
       if (firebaseUser) {
         try {
-          const profile = await getUserProfile(firebaseUser.uid)
+          const profile = await getFullUserProfile(firebaseUser.uid)
           setUserProfile(profile)
         } catch (error) {
           console.error("プロフィール取得エラー:", error)
@@ -33,9 +37,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         setUserProfile(null)
       }
-      
+
       setLoading(false)
     })
+
     return () => unsubscribe()
   }, [])
 

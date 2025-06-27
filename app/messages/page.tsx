@@ -1,6 +1,10 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { useEffect, useState } from "react"
+
+// SSR無効化
+export const dynamic = 'force-dynamic'
 import { useRouter } from "next/navigation"
 import { collection, getDocs, query, where, doc, getDoc, orderBy, limit } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"

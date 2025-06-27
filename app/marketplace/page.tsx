@@ -1,6 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+
+// SSR無効化
+export const dynamic = 'force-dynamic'
 import { useSearchParams } from "next/navigation"
 import { Search, ArrowUpDown, Filter } from "lucide-react"
 import { Input } from "@/components/ui/input"

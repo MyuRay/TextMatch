@@ -3,27 +3,39 @@ import admin from 'firebase-admin';
 import { getFCMToken } from '@/lib/firestore';
 
 if (!admin.apps.length) {
-  const serviceAccount = {
-    type: "service_account",
-    project_id: "unitext-8181a",
-    private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-    private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    client_email: process.env.FIREBASE_CLIENT_EMAIL,
-    client_id: process.env.FIREBASE_CLIENT_ID,
-    auth_uri: "https://accounts.google.com/o/oauth2/auth",
-    token_uri: "https://oauth2.googleapis.com/token",
-    auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-    client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL
-  };
+  // 開発環境では初期化をスキップ
+  if (process.env.NODE_ENV === 'production' && process.env.FIREBASE_PRIVATE_KEY) {
+    const serviceAccount = {
+      type: "service_account",
+      project_id: "unitext-8181a",
+      private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+      private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      client_id: process.env.FIREBASE_CLIENT_ID,
+      auth_uri: "https://accounts.google.com/o/oauth2/auth",
+      token_uri: "https://oauth2.googleapis.com/token",
+      auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+      client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL
+    };
 
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
-    projectId: "unitext-8181a"
-  });
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+      projectId: "unitext-8181a"
+    });
+  }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    // Firebase Adminが初期化されていない場合（開発環境など）
+    if (!admin.apps.length) {
+      console.log('Firebase Admin未初期化 - 通知スキップ');
+      return NextResponse.json(
+        { success: true, message: 'Notification skipped in development' },
+        { status: 200 }
+      );
+    }
+
     const { recipientId, title, body, data } = await request.json();
 
     if (!recipientId || !title || !body) {
