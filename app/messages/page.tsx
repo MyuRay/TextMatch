@@ -1,10 +1,7 @@
 "use client"
 
-import dynamic from "next/dynamic"
 import { useEffect, useState } from "react"
 
-// SSR無効化
-export const dynamic = 'force-dynamic'
 import { useRouter } from "next/navigation"
 import { collection, getDocs, query, where, doc, getDoc, orderBy, limit } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
@@ -18,6 +15,9 @@ import Link from "next/link"
 import { Header } from "../components/header"
 import { Footer } from "../components/footer"
 import { getUserProfile, getTextbookById } from "@/lib/firestore"
+
+// SSR無効化
+export const dynamic = 'force-dynamic'
 
 // 最新メッセージを取得するヘルパー関数
 const getLatestMessage = async (conversationId: string) => {
