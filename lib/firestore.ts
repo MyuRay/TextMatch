@@ -490,14 +490,13 @@ export const getUserUnreadMessageCount = async (userId: string): Promise<number>
 // ✅ FCMトークンを保存
 export const saveFCMToken = async (userId: string, token: string): Promise<void> => {
   try {
-    const userRef = doc(db, "users", userId)
-    await setDoc(userRef, {
-      fcmToken: token,
-      fcmTokenUpdatedAt: Timestamp.now()
-    }, { merge: true })
-    console.log("FCMトークン保存成功:", token)
+    await setDoc(doc(db, 'fcmTokens', userId), {
+      token,
+      updatedAt: Timestamp.now()
+    })
+    console.log('FCMトークンを保存しました')
   } catch (error) {
-    console.error("FCMトークン保存失敗:", error)
+    console.error('FCMトークンの保存に失敗しました:', error)
     throw error
   }
 }
@@ -505,14 +504,12 @@ export const saveFCMToken = async (userId: string, token: string): Promise<void>
 // ✅ FCMトークンを取得
 export const getFCMToken = async (userId: string): Promise<string | null> => {
   try {
-    const userDoc = await getDoc(doc(db, "users", userId))
-    if (userDoc.exists()) {
-      const data = userDoc.data()
-      return data.fcmToken || null
+    const tokenDoc = await getDoc(doc(db, 'fcmTokens', userId))
+    if (tokenDoc.exists()) {
+      return tokenDoc.data().token
     }
-    return null
   } catch (error) {
-    console.error("FCMトークン取得失敗:", error)
-    return null
+    console.error('FCMトークンの取得に失敗しました:', error)
   }
+  return null
 }

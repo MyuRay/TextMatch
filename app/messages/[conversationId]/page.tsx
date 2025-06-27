@@ -112,6 +112,9 @@ export default function ConversationPage() {
       // メール通知を送信
       await sendMessageNotification()
       
+      // プッシュ通知を送信
+      await sendPushNotification()
+      
       setNewMessage("")
     } catch (error) {
       console.error("メッセージ送信エラー:", error)
@@ -142,30 +145,6 @@ export default function ConversationPage() {
         ? newMessage.substring(0, 50) + "..." 
         : newMessage
 
-      // プッシュ通知を送信
-      try {
-        const response = await fetch('/api/send-notification', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            recipientId,
-            senderName,
-            textbookTitle: textbook.title,
-            messageContent: newMessage,
-          }),
-        })
-
-        if (response.ok) {
-          console.log('🔔 プッシュ通知送信完了')
-        } else {
-          console.log('プッシュ通知送信失敗:', await response.text())
-        }
-      } catch (pushError) {
-        console.error('プッシュ通知送信エラー:', pushError)
-      }
-
       // メール内容を作成
       const emailNotification = createMessageNotificationEmail(
         recipientName,
@@ -182,8 +161,51 @@ export default function ConversationPage() {
       
       console.log(`📧 メール通知送信完了: ${recipientEmail}`)
     } catch (error) {
-      console.error("通知送信エラー:", error)
-      // 通知送信エラーでもメッセージ送信は継続
+      console.error("メール通知送信エラー:", error)
+      // メール送信エラーでもメッセージ送信は継続
+    }
+  }
+
+  const sendPushNotification = async () => {
+    try {
+      if (!conversation || !textbook || !user) return
+
+      // 受信者を特定（送信者でない方）
+      const recipientId = conversation.buyerId === user.uid ? conversation.sellerId : conversation.buyerId
+      
+      // 送信者の名前
+      const senderName = currentUserProfile.name || "ユーザー"
+      
+      // メッセージプレビュー（最初の30文字）
+      const messagePreview = newMessage.length > 30 
+        ? newMessage.substring(0, 30) + "..." 
+        : newMessage
+
+      // プッシュ通知を送信
+      const response = await fetch('/api/send-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recipientId,
+          title: `${senderName}からメッセージ`,
+          body: `${textbook.title}: ${messagePreview}`,
+          data: {
+            conversationId: conversationId as string,
+            bookId: textbook.id
+          }
+        })
+      })
+
+      if (response.ok) {
+        console.log('📱 プッシュ通知送信完了')
+      } else {
+        console.log('プッシュ通知送信に失敗しました')
+      }
+    } catch (error) {
+      console.error("プッシュ通知送信エラー:", error)
+      // プッシュ通知エラーでもメッセージ送信は継続
     }
   }
 
