@@ -32,6 +32,8 @@ export default function PostTextbookPage() {
     price: "",
     condition: "",
     meetupLocation: "",
+    genre: "",
+    expirationDate: "",
   })
 
   const [images, setImages] = useState<File[]>([])
@@ -145,6 +147,8 @@ export default function PostTextbookPage() {
         price: 0, // テスト運用中は0円固定
         condition: formData.condition,
         meetupLocation: formData.meetupLocation,
+        genre: formData.genre,
+        expirationDate: formData.expirationDate || null,
         imageUrls: imageUrls,
         imageUrl: imageUrls[0] || "", // メイン画像（後方互換性のため）
         userId: user.uid,
@@ -277,12 +281,45 @@ export default function PostTextbookPage() {
                     <SelectItem value="good">良好</SelectItem>
                     <SelectItem value="fair">普通</SelectItem>
                     <SelectItem value="poor">傷あり</SelectItem>
+                    <SelectItem value="written">書き込みあり</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
+                <Label htmlFor="genre">ジャンル</Label>
+                <Select onValueChange={(value) => handleSelectChange("genre", value)} required>
+                  <SelectTrigger id="genre">
+                    <SelectValue placeholder="ジャンルを選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="講義参考書">講義参考書</SelectItem>
+                    <SelectItem value="資格書">資格書</SelectItem>
+                    <SelectItem value="就活関連書">就活関連書</SelectItem>
+                    <SelectItem value="その他">その他</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="expirationDate">出品期限（任意）</Label>
+                <Input 
+                  id="expirationDate" 
+                  name="expirationDate" 
+                  type="date" 
+                  value={formData.expirationDate} 
+                  onChange={handleChange}
+                  placeholder="期限を設定（任意）"
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="meetupLocation">希望取引場所</Label>
-                <Input id="meetupLocation" name="meetupLocation" value={formData.meetupLocation} onChange={handleChange} required />
+                <Input 
+                  id="meetupLocation" 
+                  name="meetupLocation" 
+                  value={formData.meetupLocation} 
+                  onChange={handleChange} 
+                  placeholder="安全な取引のためキャンパス内の人が多いところを指定してください"
+                  required 
+                />
               </div>
               <div className="space-y-2">
                 <Label>教科書の画像</Label>

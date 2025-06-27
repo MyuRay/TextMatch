@@ -31,6 +31,8 @@ export interface Textbook {
   views?: number
   status?: 'available' | 'reserved' | 'sold'
   buyerId?: string
+  genre?: string
+  expirationDate?: string | null
   createdAt: Timestamp
   purchasedAt?: Timestamp
 }
@@ -466,4 +468,31 @@ export const getUserUnreadMessageCount = async (userId: string): Promise<number>
     console.error("未読メッセージ数取得失敗:", error)
     return 0
   }
+}
+
+// ✅ FCMトークンを保存
+export const saveFCMToken = async (userId: string, token: string): Promise<void> => {
+  try {
+    await setDoc(doc(db, 'fcmTokens', userId), {
+      token,
+      updatedAt: Timestamp.now()
+    })
+    console.log('FCMトークンを保存しました')
+  } catch (error) {
+    console.error('FCMトークンの保存に失敗しました:', error)
+    throw error
+  }
+}
+
+// ✅ FCMトークンを取得
+export const getFCMToken = async (userId: string): Promise<string | null> => {
+  try {
+    const tokenDoc = await getDoc(doc(db, 'fcmTokens', userId))
+    if (tokenDoc.exists()) {
+      return tokenDoc.data().token
+    }
+  } catch (error) {
+    console.error('FCMトークンの取得に失敗しました:', error)
+  }
+  return null
 }

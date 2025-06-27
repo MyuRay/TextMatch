@@ -54,7 +54,7 @@ export default function HomePage() {
         <section className="bg-gradient-to-r from-blue-50 to-indigo-50 py-16 md:py-24">
           <div className="container mx-auto px-4 text-center">
             <h1 className="text-3xl md:text-5xl font-bold mb-6">キャンパスで教科書を手渡そう</h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-4 max-w-2xl mx-auto">
+            <p className="text-base md:text-xl text-muted-foreground mb-4 max-w-2xl mx-auto">
               オンライン✕オフライン 学生のためのフリーマーケット
             </p>
             <div className="mb-8 p-4 bg-orange-50 border border-orange-200 rounded-lg max-w-2xl mx-auto">
@@ -87,15 +87,55 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="py-12 md:py-16">
+        <section className="py-8 md:py-12">
           <div className="container mx-auto px-4">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-bold">新着教科書</h2>
-              <Button variant="outline" asChild>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl md:text-2xl font-bold">新着教科書</h2>
+              <Button variant="outline" size="sm" asChild>
                 <Link href="/marketplace">すべて見る</Link>
               </Button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {/* モバイル用横スクロール */}
+            <div className="md:hidden overflow-x-auto">
+              <div className="flex gap-4 pb-4" style={{ width: 'max-content' }}>
+                {latestBooks.map((book) => (
+                  <Card key={book.id} className="w-48 flex-shrink-0 overflow-hidden transition-all hover:shadow-md">
+                    <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted flex items-center justify-center">
+                      <Image
+                        src={(book.imageUrls && book.imageUrls[0]) || book.imageUrl || "/placeholder.svg"}
+                        alt={book.title}
+                        fill
+                        className="object-contain"
+                        style={{ objectFit: 'contain' }}
+                      />
+                      {/* 複数画像インジケータ */}
+                      {book.imageUrls && book.imageUrls.length > 1 && (
+                        <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                          +{book.imageUrls.length - 1}
+                        </div>
+                      )}
+                    </div>
+                    <CardContent className="p-3 space-y-1">
+                      <h3 className="font-semibold text-sm leading-snug line-clamp-2">{book.title}</h3>
+                      <p className="text-xs text-muted-foreground">{book.author || "著者不明"}</p>
+                      <p className="text-xs text-blue-700 font-medium">
+                        <Link href={`/marketplace?university=${encodeURIComponent(book.university || "")}`}>
+                          {book.university || "大学名不明"}
+                        </Link>
+                      </p>
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="font-bold text-sm text-gray-800">¥{book.price?.toLocaleString?.()}</p>
+                        <Button variant="outline" size="sm" className="text-xs h-7" asChild>
+                          <Link href={`/marketplace/${book.id}`}>詳細</Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+            {/* デスクトップ用グリッド */}
+            <div className="hidden md:grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {latestBooks.map((book) => (
                 <Card key={book.id} className="overflow-hidden transition-all hover:shadow-md">
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted flex items-center justify-center">
@@ -146,17 +186,17 @@ export default function HomePage() {
 
 function HowItWorksSection() {
   return (
-    <section className="py-12 md:py-16">
+    <section className="py-8 md:py-12">
       <div className="container mx-auto px-4">
-        <h2 className="text-2xl font-bold mb-8 text-center">利用方法</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <h2 className="text-lg md:text-2xl font-bold mb-6 text-center">利用方法</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
           {["教科書を出品", "メッセージで連絡", "キャンパスで取引"].map((title, i) => (
             <div className="text-center" key={i}>
-              <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-primary font-bold text-xl">{i + 1}</span>
+              <div className="bg-primary/10 w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+                <span className="text-primary font-bold text-lg md:text-xl">{i + 1}</span>
               </div>
-              <h3 className="font-bold text-lg mb-2">{title}</h3>
-              <p className="text-muted-foreground">
+              <h3 className="font-bold text-base md:text-lg mb-2">{title}</h3>
+              <p className="text-sm md:text-base text-muted-foreground">
                 {
                   ["使わなくなった教科書の情報と写真をアップロードします",
                    "興味のある教科書の出品者とメッセージでやり取りします",
@@ -166,7 +206,7 @@ function HowItWorksSection() {
             </div>
           ))}
         </div>
-        <div className="text-center mt-8">
+        <div className="text-center mt-6 md:mt-8">
           <Button size="lg" asChild>
             <Link href="/register">今すぐ登録する</Link>
           </Button>

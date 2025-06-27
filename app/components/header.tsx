@@ -9,12 +9,14 @@ import { useAuth } from "@/lib/useAuth"
 import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebaseAuth"
 import { getUserUnreadMessageCount } from "@/lib/firestore"
-import { Heart, MessageSquare, Menu, X } from "lucide-react"
+import { requestNotificationPermission, saveFCMToken, setupForegroundMessageHandler } from "@/lib/firebaseMessaging"
+import { Heart, MessageSquare, Menu, X, Bell, BellOff } from "lucide-react"
 
 export function Header() {
   const { user, userProfile, loading } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false)
 
   const getInitials = (name?: string) => {
     if (!name) return "U"
@@ -28,6 +30,21 @@ export function Header() {
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)
+  }
+
+  const handleNotificationToggle = async () => {
+    if (!user) return
+
+    if (!notificationsEnabled) {
+      const token = await requestNotificationPermission()
+      if (token) {
+        await saveFCMToken(user.uid, token)
+        setNotificationsEnabled(true)
+        setupForegroundMessageHandler()
+      }
+    } else {
+      setNotificationsEnabled(false)
+    }
   }
 
   // 未読メッセージ数を定期的に取得
@@ -53,6 +70,13 @@ export function Header() {
     
     return () => clearInterval(interval)
   }, [user])
+
+  // 通知権限の初期状態を確認
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotificationsEnabled(Notification.permission === 'granted')
+    }
+  }, [])
 
   return (
     <header className="border-b">
@@ -83,6 +107,21 @@ export function Header() {
 
           {!loading && user ? (
             <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleNotificationToggle}
+                className="flex items-center gap-1"
+              >
+                {notificationsEnabled ? (
+                  <Bell className="h-4 w-4" />
+                ) : (
+                  <BellOff className="h-4 w-4" />
+                )}
+                <span className="hidden md:inline text-sm">
+                  {notificationsEnabled ? '通知ON' : '通知OFF'}
+                </span>
+              </Button>
               <Link href="/messages" className="hover:underline flex items-center gap-1 relative">
                 <MessageSquare className="h-4 w-4" />
                 メッセージ
@@ -157,6 +196,18 @@ export function Header() {
 
             {!loading && user ? (
               <>
+                <Button
+                  variant="ghost"
+                  onClick={handleNotificationToggle}
+                  className="justify-start flex items-center gap-2 py-2 w-full"
+                >
+                  {notificationsEnabled ? (
+                    <Bell className="h-4 w-4" />
+                  ) : (
+                    <BellOff className="h-4 w-4" />
+                  )}
+                  {notificationsEnabled ? '通知ON' : '通知OFF'}
+                </Button>
                 <Link href="/messages" className="hover:underline flex items-center gap-2 py-2 relative" onClick={() => setIsMobileMenuOpen(false)}>
                   <MessageSquare className="h-4 w-4" />
                   メッセージ

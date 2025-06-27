@@ -7,12 +7,15 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TextbookCard } from "./textbook-card"
 import { getAllTextbooks, Textbook } from "@/lib/firestore"
+import { useAuth } from "@/lib/useAuth"
 import { Header } from "../components/header"
 import { Footer } from "../components/footer"
 
 export default function MarketplacePage() {
+  const { user, userProfile } = useAuth()
   const searchParams = useSearchParams()
   const urlUniversity = searchParams.get("university") ?? ""
   const urlQuery = searchParams.get("query") ?? ""
@@ -20,6 +23,9 @@ export default function MarketplacePage() {
   const [searchQuery, setSearchQuery] = useState(urlQuery || urlUniversity)
   const [sortBy, setSortBy] = useState("newest")
   const [showSold, setShowSold] = useState(true)
+  const [sameUniversityOnly, setSameUniversityOnly] = useState(false)
+  const [selectedGenre, setSelectedGenre] = useState("")
+  const [userUniversity, setUserUniversity] = useState("")
   const [allTextbooks, setAllTextbooks] = useState<Textbook[]>([])
   const [filteredTextbooks, setFilteredTextbooks] = useState<Textbook[]>([])
 
@@ -32,6 +38,12 @@ export default function MarketplacePage() {
   }, [])
 
   useEffect(() => {
+    if (userProfile?.university) {
+      setUserUniversity(userProfile.university)
+    }
+  }, [userProfile])
+
+  useEffect(() => {
     let filtered = [...allTextbooks]
     const keyword = searchQuery.toLowerCase()
 
@@ -42,6 +54,16 @@ export default function MarketplacePage() {
           book.author?.toLowerCase().includes(keyword) ||
           book.university?.toLowerCase().includes(keyword)
       )
+    }
+
+    // 同大学フィルタリング
+    if (sameUniversityOnly && userUniversity) {
+      filtered = filtered.filter(book => book.university === userUniversity)
+    }
+
+    // ジャンルフィルタリング
+    if (selectedGenre) {
+      filtered = filtered.filter(book => book.genre === selectedGenre)
     }
     
     // 売切済みアイテムのフィルタリング
@@ -65,7 +87,7 @@ export default function MarketplacePage() {
     }
 
     setFilteredTextbooks(filtered)
-  }, [searchQuery, sortBy, showSold, allTextbooks])
+  }, [searchQuery, sortBy, showSold, sameUniversityOnly, selectedGenre, userUniversity, allTextbooks])
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -104,19 +126,52 @@ export default function MarketplacePage() {
             </TabsList>
           </Tabs>
           
-          <div className="flex items-center space-x-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <Checkbox 
-              id="show-sold"
-              checked={showSold}
-              onCheckedChange={(checked) => setShowSold(checked === true)}
-            />
-            <label 
-              htmlFor="show-sold" 
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              売切済みを表示
-            </label>
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <div className="flex items-center space-x-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Checkbox 
+                id="show-sold"
+                checked={showSold}
+                onCheckedChange={(checked) => setShowSold(checked === true)}
+              />
+              <label 
+                htmlFor="show-sold" 
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                売切済みを表示
+              </label>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="same-university"
+                checked={sameUniversityOnly}
+                onCheckedChange={(checked) => setSameUniversityOnly(checked === true)}
+                disabled={!userUniversity}
+              />
+              <label 
+                htmlFor="same-university" 
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                同大学のみ表示
+              </label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-medium">ジャンル:</span>
+              <Select value={selectedGenre} onValueChange={setSelectedGenre}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="すべて" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">すべて</SelectItem>
+                  <SelectItem value="講義参考書">講義参考書</SelectItem>
+                  <SelectItem value="資格書">資格書</SelectItem>
+                  <SelectItem value="就活関連書">就活関連書</SelectItem>
+                  <SelectItem value="その他">その他</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
@@ -126,7 +181,7 @@ export default function MarketplacePage() {
         </div>
 
         {filteredTextbooks.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             {filteredTextbooks.map((book) => (
               <TextbookCard key={book.id} textbook={book} />
             ))}
