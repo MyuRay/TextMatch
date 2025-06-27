@@ -18,6 +18,16 @@ export function Header() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [notificationsEnabled, setNotificationsEnabled] = useState(false)
 
+  // デバッグ用：ユーザー状態ログ
+  useEffect(() => {
+    console.log('Header - ユーザー状態:', {
+      user: user ? 'logged_in' : 'logged_out',
+      userId: user?.uid,
+      loading,
+      userProfile: userProfile ? 'exists' : 'null'
+    })
+  }, [user, loading, userProfile])
+
   const getInitials = (name?: string) => {
     if (!name) return "U"
     return name.charAt(0).toUpperCase()
@@ -74,7 +84,11 @@ export function Header() {
   // 通知権限の初期状態を確認
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
-      setNotificationsEnabled(Notification.permission === 'granted')
+      const isGranted = Notification.permission === 'granted'
+      console.log('通知権限の初期状態:', Notification.permission, 'isGranted:', isGranted)
+      setNotificationsEnabled(isGranted)
+    } else {
+      console.log('Notification API利用不可または非ブラウザ環境')
     }
   }, [])
 
@@ -112,6 +126,7 @@ export function Header() {
                 size="sm"
                 onClick={handleNotificationToggle}
                 className="flex items-center gap-1"
+                title={`通知機能 - ユーザー: ${user?.uid}, 権限: ${notificationsEnabled ? 'ON' : 'OFF'}`}
               >
                 {notificationsEnabled ? (
                   <Bell className="h-4 w-4" />
