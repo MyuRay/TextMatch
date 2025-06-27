@@ -326,7 +326,7 @@ export default function PostTextbookPage() {
                 <ImageUpload 
                   images={images}
                   setImages={setImages}
-                  coverImageUrl={coverImageUrl}
+                  coverImageUrl={coverImageUrl ?? undefined}
                   onUseCoverImage={handleUseCoverImage}
                 />
               </div>
