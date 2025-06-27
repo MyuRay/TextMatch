@@ -20,13 +20,23 @@ export function Header() {
 
   // デバッグ用：ユーザー状態ログ
   useEffect(() => {
-    console.log('Header - ユーザー状態:', {
+    const debugInfo = {
       user: user ? 'logged_in' : 'logged_out',
       userId: user?.uid,
       loading,
-      userProfile: userProfile ? 'exists' : 'null'
-    })
-  }, [user, loading, userProfile])
+      userProfile: userProfile ? 'exists' : 'null',
+      shouldShowNotificationButton: !loading && !!user,
+      notificationsEnabled
+    }
+    console.log('🔔 Header - ユーザー状態:', debugInfo)
+    
+    // 強制的にアラートでも表示
+    if (!loading && user) {
+      console.log('✅ 通知ボタンを表示する条件が満たされています')
+    } else {
+      console.log('❌ 通知ボタンを表示しない理由:', { loading, user: !!user })
+    }
+  }, [user, loading, userProfile, notificationsEnabled])
 
   const getInitials = (name?: string) => {
     if (!name) return "U"
@@ -119,21 +129,34 @@ export function Header() {
             <Link href="/register" className="hover:underline">教科書を出品</Link>
           )}
 
+          {/* デバッグ用：通知ボタンを常に表示 */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => alert('デバッグ用通知ボタンクリック')}
+            className="flex items-center gap-1 bg-blue-500 text-white"
+            style={{ backgroundColor: 'blue', color: 'white' }}
+          >
+            <Bell className="h-4 w-4" />
+            <span className="text-sm">デバッグ</span>
+          </Button>
+
           {!loading && user ? (
             <>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleNotificationToggle}
-                className="flex items-center gap-1"
+                className="flex items-center gap-1 bg-red-100 border-2 border-red-500"
                 title={`通知機能 - ユーザー: ${user?.uid}, 権限: ${notificationsEnabled ? 'ON' : 'OFF'}`}
+                style={{ minWidth: '80px', backgroundColor: 'red', color: 'white' }}
               >
                 {notificationsEnabled ? (
                   <Bell className="h-4 w-4" />
                 ) : (
                   <BellOff className="h-4 w-4" />
                 )}
-                <span className="hidden md:inline text-sm">
+                <span className="text-sm">
                   {notificationsEnabled ? '通知ON' : '通知OFF'}
                 </span>
               </Button>
