@@ -32,3 +32,4 @@ firebase-debug.log
 *.tsbuildinfo
 next-env.d.tsunitext-8181a-firebase-adminsdk-fbsvc-5c7842f73b.json 
 "*.json" 
+"unitext-8181a-firebase-adminsdk-*.json" 
