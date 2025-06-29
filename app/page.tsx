@@ -106,7 +106,7 @@ export default function HomePage() {
               </p>
             </div>
 
-            <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-3 md:gap-4 max-w-xl mx-auto mb-6 md:mb-10">
+            <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-3 md:gap-4 max-w-lg mx-auto mb-6 md:mb-10">
               <div className="relative flex-grow">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input

@@ -1,9 +1,8 @@
-<<<<<<< HEAD
 "use client"
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { Search, ArrowUpDown, Filter } from "lucide-react"
+import { Search, ArrowUpDown, Filter, ChevronDown, ChevronUp } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -26,6 +25,8 @@ export default function MarketplacePage() {
   const [showSold, setShowSold] = useState(true)
   const [sameUniversityOnly, setSameUniversityOnly] = useState(false)
   const [genreFilter, setGenreFilter] = useState("all")
+  const [conditionFilter, setConditionFilter] = useState("all")
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [allTextbooks, setAllTextbooks] = useState<Textbook[]>([])
   const [filteredTextbooks, setFilteredTextbooks] = useState<Textbook[]>([])
 
@@ -49,357 +50,201 @@ export default function MarketplacePage() {
           book.university?.toLowerCase().includes(keyword)
       )
     }
-    
-    // 売切済みアイテムのフィルタリング
+
     if (!showSold) {
       filtered = filtered.filter(book => book.status !== 'sold')
     }
 
-    // 同大学のみ表示フィルタリング
     if (sameUniversityOnly && userProfile?.university) {
       filtered = filtered.filter(book => book.university === userProfile.university)
     }
 
-    // ジャンルフィルタリング
     if (genreFilter !== "all") {
       filtered = filtered.filter(book => book.genre === genreFilter)
     }
 
-    switch (sortBy) {
-      case "newest":
-        filtered.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
-        break
-      case "price-low":
-        filtered.sort((a, b) => (a.price ?? 0) - (b.price ?? 0))
-        break
-      case "price-high":
-        filtered.sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
-        break
-      case "popular":
-        filtered.sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
-        break
+    if (conditionFilter !== "all") {
+      filtered = filtered.filter(book => book.condition === conditionFilter)
     }
 
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "price-low":
+          return (a.price || 0) - (b.price || 0)
+        case "price-high":
+          return (b.price || 0) - (a.price || 0)
+        case "newest":
+        default:
+          return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+      }
+    })
+
     setFilteredTextbooks(filtered)
-  }, [searchQuery, sortBy, showSold, sameUniversityOnly, genreFilter, allTextbooks, userProfile])
+  }, [searchQuery, allTextbooks, sortBy, showSold, sameUniversityOnly, genreFilter, conditionFilter, userProfile])
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <Header />
-
-      <div className="container mx-auto py-4 md:py-6 px-4 md:px-6">
-        <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6">出品一覧</h1>
-        
-        {/* テスト運用中のお知らせ */}
-        <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-          <p className="text-orange-800 font-medium">
-            🧪 <strong>テスト運用中</strong> -  現在テスト運用中です！0円で教科書の取引をお願いします。
-          </p>
-        </div>
-
-        {/* 検索バー */}
-        <div className="mb-4 md:mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="タイトル・著者・大学名で検索..."
-              className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* フィルタとソート */}
-        <div className="flex flex-col gap-3 mb-4 md:mb-6">
-          <Tabs defaultValue="newest" onValueChange={setSortBy}>
-            <TabsList className="grid grid-cols-3 w-full h-9">
-              <TabsTrigger value="newest" className="text-xs md:text-sm">新着順</TabsTrigger>
-              <TabsTrigger value="price-low" className="text-xs md:text-sm">安い順<ArrowUpDown className="ml-1 h-3 w-3" /></TabsTrigger>
-              <TabsTrigger value="price-high" className="text-xs md:text-sm">高い順</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          
-          {/* フィルター */}
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center space-x-2">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <Checkbox 
-                  id="show-sold"
-                  checked={showSold}
-                  onCheckedChange={(checked) => setShowSold(checked === true)}
-                />
-                <label 
-                  htmlFor="show-sold" 
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  売切済みを表示
-                </label>
+      <main className="flex-1 py-6">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col gap-6">
+            <div className="space-y-4">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold mb-3 md:mb-4">出品一覧</h1>
+                <div className="mb-4 md:mb-6 p-3 md:p-4 bg-orange-50 border border-orange-200 rounded-lg max-w-2xl mx-auto">
+                  <p className="text-orange-800 font-medium text-sm md:text-base text-center">
+                    🧪 現在テスト運用中です！0円での教科書の取引にご協力をお願いします
+                  </p>
+                </div>
               </div>
               
-              {/* 同大学フィルター */}
-              {user && userProfile?.university && (
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="same-university"
-                    checked={sameUniversityOnly}
-                    onCheckedChange={(checked) => setSameUniversityOnly(checked === true)}
-                  />
-                  <label 
-                    htmlFor="same-university" 
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    同大学のみ表示（{userProfile.university}）
-                  </label>
+              <div className="relative max-w-2xl mx-auto">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+                <Input
+                  placeholder="タイトル、著者、大学名で検索..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-12 w-full h-12 md:h-14 text-base"
+                />
+              </div>
+            </div>
+
+            {/* ソート機能（3分割） */}
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                variant={sortBy === "newest" ? "default" : "outline"}
+                onClick={() => setSortBy("newest")}
+                className="text-xs md:text-sm h-8 md:h-10"
+              >
+                新着順
+              </Button>
+              <Button
+                variant={sortBy === "price-low" ? "default" : "outline"}
+                onClick={() => setSortBy("price-low")}
+                className="text-xs md:text-sm h-8 md:h-10"
+              >
+                安い順
+              </Button>
+              <Button
+                variant={sortBy === "price-high" ? "default" : "outline"}
+                onClick={() => setSortBy("price-high")}
+                className="text-xs md:text-sm h-8 md:h-10"
+              >
+                高い順
+              </Button>
+            </div>
+
+            <div className="flex flex-col lg:flex-row gap-4">
+              {/* フィルター（折りたたみ可能） */}
+              <div className="bg-card rounded-lg border lg:w-64 flex-shrink-0">
+                <button
+                  onClick={() => setIsFilterOpen(!isFilterOpen)}
+                  className="w-full p-3 md:p-4 flex items-center justify-between hover:bg-gray-50 rounded-t-lg"
+                >
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4" />
+                    <span className="font-semibold">フィルター</span>
+                  </div>
+                  {isFilterOpen ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </button>
+                
+                {isFilterOpen && (
+                  <div className="p-3 md:p-4 pt-0 space-y-3 md:space-y-4">
+                    <div>
+                    <label className="text-sm font-medium mb-2 block">ジャンル</label>
+                    <Select value={genreFilter} onValueChange={setGenreFilter}>
+                      <SelectTrigger className="h-8 md:h-10">
+                        <SelectValue placeholder="ジャンルを選択" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">すべて</SelectItem>
+                        <SelectItem value="textbook">講義参考書</SelectItem>
+                        <SelectItem value="certification">資格書</SelectItem>
+                        <SelectItem value="jobhunting">就活関連書</SelectItem>
+                        <SelectItem value="other">その他</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">商品状態</label>
+                    <Select value={conditionFilter} onValueChange={setConditionFilter}>
+                      <SelectTrigger className="h-8 md:h-10">
+                        <SelectValue placeholder="状態を選択" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">すべて</SelectItem>
+                        <SelectItem value="excellent">ほぼ新品</SelectItem>
+                        <SelectItem value="good">良好</SelectItem>
+                        <SelectItem value="fair">やや傷あり</SelectItem>
+                        <SelectItem value="poor">傷あり</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="hideSold"
+                      checked={!showSold}
+                      onCheckedChange={(checked) => setShowSold(!checked)}
+                    />
+                    <label htmlFor="hideSold" className="text-sm">
+                      売り切れを表示しない
+                    </label>
+                  </div>
+
+                  {userProfile?.university && (
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="sameUniversity"
+                        checked={sameUniversityOnly}
+                        onCheckedChange={(checked) => setSameUniversityOnly(checked === true)}
+                      />
+                      <label htmlFor="sameUniversity" className="text-sm">
+                        {userProfile.university}のみ表示
+                      </label>
+                    </div>
+                  )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1">
+                <div className="mb-3 md:mb-4 text-xs md:text-sm text-muted-foreground">
+                  {filteredTextbooks.length} 件の教科書が見つかりました
                 </div>
-              )}
-            </div>
-            
-            {/* ジャンルフィルター */}
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium">ジャンル:</span>
-              <Select value={genreFilter} onValueChange={setGenreFilter}>
-                <SelectTrigger className="w-28 h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">すべて</SelectItem>
-                  <SelectItem value="textbook">講義参考書</SelectItem>
-                  <SelectItem value="certification">資格書</SelectItem>
-                  <SelectItem value="jobhunting">就活関連書</SelectItem>
-                  <SelectItem value="other">その他</SelectItem>
-                </SelectContent>
-              </Select>
+                
+                {filteredTextbooks.length === 0 ? (
+                  <div className="text-center py-8 md:py-12">
+                    <p className="text-muted-foreground mb-4 text-sm md:text-base">
+                      {searchQuery || genreFilter !== "all" || conditionFilter !== "all" || sameUniversityOnly || !showSold
+                        ? "検索条件に一致する教科書が見つかりませんでした"
+                        : "まだ教科書が投稿されていません"}
+                    </p>
+                    {searchQuery && (
+                      <Button variant="outline" onClick={() => setSearchQuery("")} size="sm">
+                        検索をクリア
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+                    {filteredTextbooks.map((textbook) => (
+                      <TextbookCard key={textbook.id} textbook={textbook} />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
-
-        <div className="mb-4 text-sm text-muted-foreground">
-          {filteredTextbooks.length}件の教科書
-          {searchQuery && ` - "${searchQuery}" の検索結果`}
-        </div>
-
-        {filteredTextbooks.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-            {filteredTextbooks.map((book) => (
-              <TextbookCard key={book.id} textbook={book} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <h3 className="text-lg font-medium">教科書が見つかりませんでした</h3>
-            <p className="text-muted-foreground mt-2">検索条件を変更してお試しください</p>
-          </div>
-        )}
-      </div>
+      </main>
 
       <Footer />
     </div>
   )
 }
-=======
-"use client"
-
-import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
-
-// SSR無効化
-export const dynamic = 'force-dynamic'
-import { Search, ArrowUpDown, Filter } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { TextbookCard } from "./textbook-card"
-import { getAllTextbooks, Textbook } from "@/lib/firestore"
-import { useAuth } from "@/lib/useAuth"
-import { Header } from "../components/header"
-import { Footer } from "../components/footer"
-
-export default function MarketplacePage() {
-  const { user, userProfile } = useAuth()
-  const searchParams = useSearchParams()
-  const urlUniversity = searchParams.get("university") ?? ""
-  const urlQuery = searchParams.get("query") ?? ""
-
-  const [searchQuery, setSearchQuery] = useState(urlQuery || urlUniversity)
-  const [sortBy, setSortBy] = useState("newest")
-  const [showSold, setShowSold] = useState(true)
-  const [sameUniversityOnly, setSameUniversityOnly] = useState(false)
-  const [selectedGenre, setSelectedGenre] = useState("")
-  const [userUniversity, setUserUniversity] = useState("")
-  const [allTextbooks, setAllTextbooks] = useState<Textbook[]>([])
-  const [filteredTextbooks, setFilteredTextbooks] = useState<Textbook[]>([])
-
-  useEffect(() => {
-    const fetchBooks = async () => {
-      const books = await getAllTextbooks()
-      setAllTextbooks(books)
-    }
-    fetchBooks()
-  }, [])
-
-  useEffect(() => {
-    if (userProfile?.university) {
-      setUserUniversity(userProfile.university)
-    }
-  }, [userProfile])
-
-  useEffect(() => {
-    let filtered = [...allTextbooks]
-    const keyword = searchQuery.toLowerCase()
-
-    if (keyword) {
-      filtered = filtered.filter(
-        (book) =>
-          book.title?.toLowerCase().includes(keyword) ||
-          book.author?.toLowerCase().includes(keyword) ||
-          book.university?.toLowerCase().includes(keyword)
-      )
-    }
-
-    // 同大学フィルタリング
-    if (sameUniversityOnly && userUniversity) {
-      filtered = filtered.filter(book => book.university === userUniversity)
-    }
-
-    // ジャンルフィルタリング
-    if (selectedGenre) {
-      filtered = filtered.filter(book => book.genre === selectedGenre)
-    }
-    
-    // 売切済みアイテムのフィルタリング
-    if (!showSold) {
-      filtered = filtered.filter(book => book.status !== 'sold')
-    }
-
-    switch (sortBy) {
-      case "newest":
-        filtered.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
-        break
-      case "price-low":
-        filtered.sort((a, b) => (a.price ?? 0) - (b.price ?? 0))
-        break
-      case "price-high":
-        filtered.sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
-        break
-      case "popular":
-        filtered.sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
-        break
-    }
-
-    setFilteredTextbooks(filtered)
-  }, [searchQuery, sortBy, showSold, sameUniversityOnly, selectedGenre, userUniversity, allTextbooks])
-
-  return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
-
-      <div className="container mx-auto py-4 md:py-6 px-4 md:px-6">
-        <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6">出品一覧</h1>
-        
-        {/* テスト運用中のお知らせ */}
-        <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-          <p className="text-orange-800 font-medium">
-            🧪 <strong>テスト運用中</strong> -  現在テスト運用中です！0円で教科書の取引をお願いします。
-          </p>
-        </div>
-
-        {/* 検索バー */}
-        <div className="mb-4 md:mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="タイトル・著者・大学名で検索..."
-              className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* フィルタとソート */}
-        <div className="flex flex-col gap-3 mb-4 md:mb-6">
-          <Tabs defaultValue="newest" onValueChange={setSortBy}>
-            <TabsList className="grid grid-cols-3 w-full h-9">
-              <TabsTrigger value="newest" className="text-xs md:text-sm">新着順</TabsTrigger>
-              <TabsTrigger value="price-low" className="text-xs md:text-sm">安い順<ArrowUpDown className="ml-1 h-3 w-3" /></TabsTrigger>
-              <TabsTrigger value="price-high" className="text-xs md:text-sm">高い順</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-            <div className="flex items-center space-x-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <Checkbox 
-                id="show-sold"
-                checked={showSold}
-                onCheckedChange={(checked) => setShowSold(checked === true)}
-              />
-              <label 
-                htmlFor="show-sold" 
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                売切済みを表示
-              </label>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="same-university"
-                checked={sameUniversityOnly}
-                onCheckedChange={(checked) => setSameUniversityOnly(checked === true)}
-                disabled={!userUniversity}
-              />
-              <label 
-                htmlFor="same-university" 
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                同大学のみ表示
-              </label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium">ジャンル:</span>
-              <Select value={selectedGenre} onValueChange={setSelectedGenre}>
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="すべて" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">すべて</SelectItem>
-                  <SelectItem value="講義参考書">講義参考書</SelectItem>
-                  <SelectItem value="資格書">資格書</SelectItem>
-                  <SelectItem value="就活関連書">就活関連書</SelectItem>
-                  <SelectItem value="その他">その他</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-4 text-sm text-muted-foreground">
-          {filteredTextbooks.length}件の教科書
-          {searchQuery && ` - "${searchQuery}" の検索結果`}
-        </div>
-
-        {filteredTextbooks.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-            {filteredTextbooks.map((book) => (
-              <TextbookCard key={book.id} textbook={book} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <h3 className="text-lg font-medium">教科書が見つかりませんでした</h3>
-            <p className="text-muted-foreground mt-2">検索条件を変更してお試しください</p>
-          </div>
-        )}
-      </div>
-
-      <Footer />
-    </div>
-  )
-}
->>>>>>> feature/push-notifications

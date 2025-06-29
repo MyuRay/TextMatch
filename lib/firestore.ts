@@ -87,6 +87,10 @@ export const getAllTextbooks = async (): Promise<Textbook[]> => {
 
 // ✅ 教科書の詳細情報をIDから取得
 export const getTextbookById = async (id: string): Promise<Textbook | null> => {
+  if (!id) {
+    console.warn("getTextbookById: IDが指定されていません")
+    return null
+  }
   const docRef = doc(db, "books", id)
   const docSnap = await getDoc(docRef)
   if (docSnap.exists()) {

@@ -13,6 +13,9 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 }
 
+// デバッグ用: 環境変数の確認
+console.log('Firebase Config:', firebaseConfig)
+
 const app = initializeApp(firebaseConfig)
 
 export const db = getFirestore(app)

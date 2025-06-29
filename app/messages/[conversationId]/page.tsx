@@ -12,6 +12,9 @@ import {
   serverTimestamp,
   doc,
   getDoc,
+  updateDoc,
+  where,
+  getDocs,
 } from "firebase/firestore"
 import { useAuth } from "@/lib/useAuth"
 import { Button } from "@/components/ui/button"
@@ -69,14 +72,20 @@ export default function ConversationPage() {
         setCurrentUserProfile(currentProfile || {name: "あなた"})
         setTextbook(textbookData)
         
+        // 未読メッセージを既読にする
+        await markMessagesAsRead()
+        
         // メッセージのリアルタイム監視
         const messagesRef = collection(db, "conversations", conversationId as string, "messages")
         const q = query(messagesRef, orderBy("createdAt"))
 
-        unsubscribe = onSnapshot(q, (snapshot) => {
+        unsubscribe = onSnapshot(q, async (snapshot) => {
           const msgs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
           setMessages(msgs)
           setLoading(false)
+          
+          // 新しい未読メッセージがあれば既読にする
+          await markMessagesAsRead()
         }, (error) => {
           console.error("メッセージ取得エラー:", error)
           setLoading(false)
@@ -98,6 +107,31 @@ export default function ConversationPage() {
     }
   }, [conversationId, user, authLoading, router])
 
+  const markMessagesAsRead = async () => {
+    if (!user || !conversationId) return
+    
+    try {
+      const messagesRef = collection(db, "conversations", conversationId as string, "messages")
+      const snapshot = await getDocs(messagesRef)
+      
+      // 自分以外から送信されたメッセージで、isReadがfalseまたは未設定のものを既読にする
+      const updatePromises = snapshot.docs
+        .filter(messageDoc => {
+          const data = messageDoc.data()
+          return data.senderId !== user.uid && (data.isRead === false || data.isRead === undefined)
+        })
+        .map(messageDoc => 
+          updateDoc(doc(db, "conversations", conversationId as string, "messages", messageDoc.id), {
+            isRead: true
+          })
+        )
+      
+      await Promise.all(updatePromises)
+    } catch (error) {
+      console.error("メッセージ既読更新エラー:", error)
+    }
+  }
+
   const handleSend = async () => {
     if (!newMessage.trim() || !user) return
 
@@ -107,6 +141,7 @@ export default function ConversationPage() {
         text: newMessage,
         senderId: user.uid,
         createdAt: serverTimestamp(),
+        isRead: false,
       })
       
       // メール通知を送信
@@ -248,7 +283,6 @@ export default function ConversationPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
-      <Header />
       {/* ヘッダー */}
       <header className="bg-white border-b shadow-sm">
         <div className="container mx-auto px-4 py-3">
@@ -305,7 +339,13 @@ export default function ConversationPage() {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-sm truncate">{textbook.title}</h3>
                   <p className="text-xs text-muted-foreground">{textbook.author}</p>
-                  <p className="text-sm font-bold text-primary">¥{textbook.price?.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">{textbook.university}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-sm font-bold text-primary">¥{textbook.price?.toLocaleString()}</p>
+                    <Badge variant={textbook.status === 'sold' ? 'destructive' : 'secondary'} className="text-xs">
+                      {textbook.status === 'sold' ? '売切' : '販売中'}
+                    </Badge>
+                  </div>
                 </div>
                 <Button variant="outline" size="sm" className="text-xs px-2 py-1 h-7" asChild>
                   <Link href={`/marketplace/${textbook.id}`}>詳細</Link>
