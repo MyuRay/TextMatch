@@ -66,6 +66,9 @@ interface Conversation {
     title: string
     price: number
     imageUrl?: string
+    author?: string
+    university?: string
+    status?: string
   }
   otherUser?: {
     id: string
