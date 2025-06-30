@@ -117,8 +117,8 @@ export default function MyPage() {
           const sellerSnapshot = await getDocs(sellerTransactionsQuery)
           
           const transactionData = [
-            ...buyerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), userRole: 'buyer' })),
-            ...sellerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), userRole: 'seller' }))
+            ...buyerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), userRole: 'buyer' } as any)),
+            ...sellerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), userRole: 'seller' } as any))
           ] as Textbook[]
           
           setTransactionBooks(transactionData)
@@ -141,7 +141,7 @@ export default function MyPage() {
           const soldData = soldSnapshot.docs.map(doc => ({ 
             id: doc.id, 
             ...doc.data()
-          })) as Textbook[]
+          } as any)) as Textbook[]
           
           setSoldBooks(soldData)
         } catch (soldError) {
