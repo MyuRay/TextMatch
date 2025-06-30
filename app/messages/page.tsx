@@ -349,7 +349,7 @@ export default function MessagesPage() {
                                   className="text-xs bg-white hover:bg-blue-50 ml-2" 
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    router.push(`/marketplace/${conversation.textbook.id}`)
+                                    router.push(`/marketplace/${conversation.textbook?.id}`)
                                   }}
                                 >
                                   📖 詳細
