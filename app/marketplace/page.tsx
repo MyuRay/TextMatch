@@ -109,6 +109,90 @@ export default function MarketplacePage() {
               </div>
             </div>
 
+            {/* フィルター（折りたたみ可能） */}
+            <div className="bg-card rounded-lg border">
+              <button
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className="w-full p-3 md:p-4 flex items-center justify-between hover:bg-gray-50 rounded-t-lg"
+              >
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" />
+                  <span className="font-semibold">フィルター</span>
+                </div>
+                {isFilterOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </button>
+              
+              {isFilterOpen && (
+                <div className="p-3 md:p-4 pt-0">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">ジャンル</label>
+                      <Select value={genreFilter} onValueChange={setGenreFilter}>
+                        <SelectTrigger className="h-8 md:h-10">
+                          <SelectValue placeholder="ジャンルを選択" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">すべて</SelectItem>
+                          <SelectItem value="textbook">講義参考書</SelectItem>
+                          <SelectItem value="certification">資格書</SelectItem>
+                          <SelectItem value="jobhunting">就活関連書</SelectItem>
+                          <SelectItem value="other">その他</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">商品状態</label>
+                      <Select value={conditionFilter} onValueChange={setConditionFilter}>
+                        <SelectTrigger className="h-8 md:h-10">
+                          <SelectValue placeholder="状態を選択" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">すべて</SelectItem>
+                          <SelectItem value="excellent">ほぼ新品</SelectItem>
+                          <SelectItem value="good">良好</SelectItem>
+                          <SelectItem value="fair">やや傷あり</SelectItem>
+                          <SelectItem value="poor">傷あり</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex flex-col justify-end">
+                      <div className="flex items-center space-x-2 h-8 md:h-10">
+                        <Checkbox
+                          id="hideSold"
+                          checked={!showSold}
+                          onCheckedChange={(checked) => setShowSold(!checked)}
+                        />
+                        <label htmlFor="hideSold" className="text-sm">
+                          売り切れを表示しない
+                        </label>
+                      </div>
+                    </div>
+
+                    {userProfile?.university && (
+                      <div className="flex flex-col justify-end">
+                        <div className="flex items-center space-x-2 h-8 md:h-10">
+                          <Checkbox
+                            id="sameUniversity"
+                            checked={sameUniversityOnly}
+                            onCheckedChange={(checked) => setSameUniversityOnly(checked === true)}
+                          />
+                          <label htmlFor="sameUniversity" className="text-sm">
+                            {userProfile.university}のみ表示
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* ソート機能（3分割） */}
             <div className="grid grid-cols-3 gap-2">
               <Button
@@ -134,112 +218,30 @@ export default function MarketplacePage() {
               </Button>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* フィルター（折りたたみ可能） */}
-              <div className="bg-card rounded-lg border lg:w-64 flex-shrink-0">
-                <button
-                  onClick={() => setIsFilterOpen(!isFilterOpen)}
-                  className="w-full p-3 md:p-4 flex items-center justify-between hover:bg-gray-50 rounded-t-lg"
-                >
-                  <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4" />
-                    <span className="font-semibold">フィルター</span>
-                  </div>
-                  {isFilterOpen ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                </button>
-                
-                {isFilterOpen && (
-                  <div className="p-3 md:p-4 pt-0 space-y-3 md:space-y-4">
-                    <div>
-                    <label className="text-sm font-medium mb-2 block">ジャンル</label>
-                    <Select value={genreFilter} onValueChange={setGenreFilter}>
-                      <SelectTrigger className="h-8 md:h-10">
-                        <SelectValue placeholder="ジャンルを選択" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">すべて</SelectItem>
-                        <SelectItem value="textbook">講義参考書</SelectItem>
-                        <SelectItem value="certification">資格書</SelectItem>
-                        <SelectItem value="jobhunting">就活関連書</SelectItem>
-                        <SelectItem value="other">その他</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">商品状態</label>
-                    <Select value={conditionFilter} onValueChange={setConditionFilter}>
-                      <SelectTrigger className="h-8 md:h-10">
-                        <SelectValue placeholder="状態を選択" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">すべて</SelectItem>
-                        <SelectItem value="excellent">ほぼ新品</SelectItem>
-                        <SelectItem value="good">良好</SelectItem>
-                        <SelectItem value="fair">やや傷あり</SelectItem>
-                        <SelectItem value="poor">傷あり</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="hideSold"
-                      checked={!showSold}
-                      onCheckedChange={(checked) => setShowSold(!checked)}
-                    />
-                    <label htmlFor="hideSold" className="text-sm">
-                      売り切れを表示しない
-                    </label>
-                  </div>
-
-                  {userProfile?.university && (
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="sameUniversity"
-                        checked={sameUniversityOnly}
-                        onCheckedChange={(checked) => setSameUniversityOnly(checked === true)}
-                      />
-                      <label htmlFor="sameUniversity" className="text-sm">
-                        {userProfile.university}のみ表示
-                      </label>
-                    </div>
-                  )}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex-1">
-                <div className="mb-3 md:mb-4 text-xs md:text-sm text-muted-foreground">
-                  {filteredTextbooks.length} 件の教科書が見つかりました
-                </div>
-                
-                {filteredTextbooks.length === 0 ? (
-                  <div className="text-center py-8 md:py-12">
-                    <p className="text-muted-foreground mb-4 text-sm md:text-base">
-                      {searchQuery || genreFilter !== "all" || conditionFilter !== "all" || sameUniversityOnly || !showSold
-                        ? "検索条件に一致する教科書が見つかりませんでした"
-                        : "まだ教科書が投稿されていません"}
-                    </p>
-                    {searchQuery && (
-                      <Button variant="outline" onClick={() => setSearchQuery("")} size="sm">
-                        検索をクリア
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
-                    {filteredTextbooks.map((textbook) => (
-                      <TextbookCard key={textbook.id} textbook={textbook} />
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div className="mb-3 md:mb-4 text-xs md:text-sm text-muted-foreground">
+              {filteredTextbooks.length} 件の教科書が見つかりました
             </div>
+            
+            {filteredTextbooks.length === 0 ? (
+              <div className="text-center py-8 md:py-12">
+                <p className="text-muted-foreground mb-4 text-sm md:text-base">
+                  {searchQuery || genreFilter !== "all" || conditionFilter !== "all" || sameUniversityOnly || !showSold
+                    ? "検索条件に一致する教科書が見つかりませんでした"
+                    : "まだ教科書が投稿されていません"}
+                </p>
+                {searchQuery && (
+                  <Button variant="outline" onClick={() => setSearchQuery("")} size="sm">
+                    検索をクリア
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+                {filteredTextbooks.map((textbook) => (
+                  <TextbookCard key={textbook.id} textbook={textbook} />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </main>

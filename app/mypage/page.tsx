@@ -16,8 +16,9 @@ import {
 import {
   Avatar, AvatarFallback, AvatarImage
 } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import {
-  BookOpen, Edit, Heart, MessageSquare, Package, Settings, ShoppingBag, Trash2, Camera, X
+  BookOpen, Edit, Heart, MessageSquare, Package, Settings, ShoppingBag, Trash2, Camera, X, Clock
 } from "lucide-react"
 import { Header } from "../components/header"
 import { Footer } from "../components/footer"
@@ -28,6 +29,8 @@ export default function MyPage() {
   const [sellingBooks, setSellingBooks] = useState<Textbook[]>([])
   const [favorites, setFavorites] = useState<Textbook[]>([])
   const [purchases, setPurchases] = useState<Textbook[]>([])
+  const [transactionBooks, setTransactionBooks] = useState<Textbook[]>([])
+  const [soldBooks, setSoldBooks] = useState<Textbook[]>([])
   const [dataLoading, setDataLoading] = useState(true)
   const [favoritesLoading, setFavoritesLoading] = useState(false)
   const { user, loading } = useAuth()
@@ -93,6 +96,57 @@ export default function MyPage() {
           console.error("Step 4 エラー:", purchasesError)
           console.log("購入履歴取得をスキップ（エラーのため）")
           setPurchases([])
+        }
+
+        // 取引中の教科書取得
+        try {
+          // 購入者として取引中の教科書
+          const buyerTransactionsQuery = query(
+            collection(db, "books"),
+            where("buyerId", "==", user.uid),
+            where("transactionStatus", "==", "in_progress")
+          )
+          const buyerSnapshot = await getDocs(buyerTransactionsQuery)
+          
+          // 出品者として取引中の教科書（userIdで検索）
+          const sellerTransactionsQuery = query(
+            collection(db, "books"),
+            where("userId", "==", user.uid),
+            where("transactionStatus", "==", "in_progress")
+          )
+          const sellerSnapshot = await getDocs(sellerTransactionsQuery)
+          
+          const transactionData = [
+            ...buyerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), userRole: 'buyer' })),
+            ...sellerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), userRole: 'seller' }))
+          ] as Textbook[]
+          
+          setTransactionBooks(transactionData)
+        } catch (transactionError) {
+          console.error("取引中教科書取得エラー:", transactionError)
+          setTransactionBooks([])
+        }
+
+        // 売却履歴取得
+        try {
+          // 出品者として売却済み（取引完了）の教科書
+          const soldBooksQuery = query(
+            collection(db, "books"),
+            where("userId", "==", user.uid),
+            where("status", "==", "sold"),
+            where("transactionStatus", "==", "completed")
+          )
+          const soldSnapshot = await getDocs(soldBooksQuery)
+          
+          const soldData = soldSnapshot.docs.map(doc => ({ 
+            id: doc.id, 
+            ...doc.data()
+          })) as Textbook[]
+          
+          setSoldBooks(soldData)
+        } catch (soldError) {
+          console.error("売却履歴取得エラー:", soldError)
+          setSoldBooks([])
         }
         
         console.log("マイページ：全データ取得完了")
@@ -181,6 +235,8 @@ export default function MyPage() {
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <TabButton label="プロフィール" icon={<Settings />} active={activeTab === "profile"} onClick={() => handleTabChange("profile")} mobile />
             <TabButton label="出品中" icon={<BookOpen />} active={activeTab === "selling"} onClick={() => handleTabChange("selling")} mobile />
+            <TabButton label="取引中" icon={<Clock />} active={activeTab === "transactions"} onClick={() => handleTabChange("transactions")} mobile />
+            <TabButton label="売却履歴" icon={<Package />} active={activeTab === "sold"} onClick={() => handleTabChange("sold")} mobile />
             <TabButton label="購入履歴" icon={<ShoppingBag />} active={activeTab === "purchased"} onClick={() => handleTabChange("purchased")} mobile />
             <TabButton label="お気に入り" icon={<Heart />} active={activeTab === "favorites"} onClick={() => handleTabChange("favorites")} mobile />
             <TabButton label="メッセージ" icon={<MessageSquare />} active={activeTab === "messages"} onClick={() => handleTabChange("messages")} mobile />
@@ -205,6 +261,8 @@ export default function MyPage() {
                 <div className="mt-6 space-y-2">
                   <TabButton label="プロフィール" icon={<Settings />} active={activeTab === "profile"} onClick={() => handleTabChange("profile")} />
                   <TabButton label="出品中の教科書" icon={<BookOpen />} active={activeTab === "selling"} onClick={() => handleTabChange("selling")} />
+                  <TabButton label="取引中" icon={<Clock />} active={activeTab === "transactions"} onClick={() => handleTabChange("transactions")} />
+                  <TabButton label="売却履歴" icon={<Package />} active={activeTab === "sold"} onClick={() => handleTabChange("sold")} />
                   <TabButton label="購入履歴" icon={<ShoppingBag />} active={activeTab === "purchased"} onClick={() => handleTabChange("purchased")} />
                   <TabButton label="お気に入り" icon={<Heart />} active={activeTab === "favorites"} onClick={() => handleTabChange("favorites")} />
                   <TabButton label="メッセージ" icon={<MessageSquare />} active={activeTab === "messages"} onClick={() => handleTabChange("messages")} />
@@ -222,7 +280,9 @@ export default function MyPage() {
 
           <div className="space-y-6">
             {activeTab === "profile" && <ProfileCard user={userData} />}
-            {activeTab === "selling" && <BooksListCard title="出品中の教科書" books={sellingBooks} isEditable />} 
+            {activeTab === "selling" && <BooksListCard title="出品中の教科書" books={sellingBooks} isEditable />}
+            {activeTab === "transactions" && <TransactionBooksCard books={transactionBooks} />}
+            {activeTab === "sold" && <BooksListCard title="売却履歴" books={soldBooks} isSold />}
             {activeTab === "purchased" && <BooksListCard title="購入履歴" books={purchases} isPurchase />} 
             {activeTab === "favorites" && (
               favoritesLoading ? (
@@ -522,11 +582,12 @@ function ProfileCard({ user }: { user: UserProfile }) {
   )
 }
 
-function BooksListCard({ title, books, isPurchase = false, isEditable = false, favorites, setFavorites }: {
+function BooksListCard({ title, books, isPurchase = false, isEditable = false, isSold = false, favorites, setFavorites }: {
   title: string
   books: Textbook[]
   isPurchase?: boolean
   isEditable?: boolean
+  isSold?: boolean
   favorites?: Textbook[]
   setFavorites?: (favorites: Textbook[]) => void
 }) {
@@ -604,6 +665,29 @@ function BooksListCard({ title, books, isPurchase = false, isEditable = false, f
       return "不明"
     }
   }
+
+  const formatSoldDate = (completedAt: any) => {
+    if (!completedAt) return "不明"
+    
+    try {
+      // Timestamp オブジェクトの場合
+      if (completedAt.toDate) {
+        return completedAt.toDate().toLocaleDateString('ja-JP')
+      }
+      // 秒数の場合
+      if (completedAt.seconds) {
+        return new Date(completedAt.seconds * 1000).toLocaleDateString('ja-JP')
+      }
+      // Date オブジェクトの場合
+      if (completedAt instanceof Date) {
+        return completedAt.toLocaleDateString('ja-JP')
+      }
+      return String(completedAt)
+    } catch (error) {
+      console.error("日付変換エラー:", error)
+      return "不明"
+    }
+  }
   
   return (
     <Card>
@@ -615,6 +699,8 @@ function BooksListCard({ title, books, isPurchase = false, isEditable = false, f
               <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
             ) : isPurchase ? (
               <ShoppingBag className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+            ) : isSold ? (
+              <Package className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
             ) : isEditable ? (
               <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
             ) : (
@@ -625,6 +711,8 @@ function BooksListCard({ title, books, isPurchase = false, isEditable = false, f
                 ? "お気に入りの教科書はまだありません" 
                 : isPurchase 
                 ? "購入した教科書はまだありません"
+                : isSold
+                ? "売却した教科書はまだありません"
                 : isEditable 
                 ? "出品中の教科書はありません"
                 : "該当する教科書はありません"}
@@ -658,6 +746,7 @@ function BooksListCard({ title, books, isPurchase = false, isEditable = false, f
                 {book.status === 'reserved' && <p className="text-xs md:text-sm text-yellow-500">予約済</p>}
                 {book.status === 'available' && isEditable && <p className="text-xs md:text-sm text-green-500">出品中</p>}
                 {isPurchase && <p className="text-xs md:text-sm">購入日：{formatPurchaseDate(book.purchasedAt)}</p>}
+                {isSold && <p className="text-xs md:text-sm text-green-600">売却日：{formatSoldDate(book.completedAt)}</p>}
                 <div className="mt-2 flex flex-col sm:flex-row gap-1 sm:gap-2">
                   {isFavorites && (
                     <>
@@ -686,6 +775,13 @@ function BooksListCard({ title, books, isPurchase = false, isEditable = false, f
                       <MessageSquare className="mr-1 h-3 w-3" /> 出品者に連絡
                     </Button>
                   )}
+                  {isSold && (
+                    <Link href={`/marketplace/${book.id}`} className="flex-1 sm:flex-none">
+                      <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                        <BookOpen className="mr-1 h-3 w-3" /> 詳細
+                      </Button>
+                    </Link>
+                  )}
                   {isEditable && (
                     <>
                       <Link href={`/marketplace/${book.id}`} className="flex-1 sm:flex-none">
@@ -700,6 +796,122 @@ function BooksListCard({ title, books, isPurchase = false, isEditable = false, f
                       </Link>
                     </>
                   )}
+                </div>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </CardContent>
+    </Card>
+  )
+}
+
+function TransactionBooksCard({ books }: { books: Textbook[] }) {
+  const { user } = useAuth()
+  const router = useRouter()
+  
+  const handleMessageOtherParty = async (book: any) => {
+    if (!user) {
+      router.push("/login")
+      return
+    }
+
+    try {
+      // 既存の会話を検索
+      const conversationsRef = collection(db, "conversations")
+      const conversationQuery = query(
+        conversationsRef,
+        where("bookId", "==", book.id)
+      )
+      const conversationSnapshot = await getDocs(conversationQuery)
+      
+      if (!conversationSnapshot.empty) {
+        // 既存の会話から現在のユーザーが参加している正しい会話を探す
+        let targetConversation = null
+        
+        for (const doc of conversationSnapshot.docs) {
+          const data = doc.data()
+          
+          // 出品者(seller)の場合は sellerId が一致する会話を優先
+          if (book.userRole === 'seller' && data.sellerId === user.uid) {
+            targetConversation = doc
+            break
+          }
+          // 購入者(buyer)の場合は buyerId が一致する会話を優先  
+          else if (book.userRole === 'buyer' && data.buyerId === user.uid) {
+            targetConversation = doc
+            break
+          }
+          // フォールバック: どちらかが一致すれば選択
+          else if (data.buyerId === user.uid || data.sellerId === user.uid) {
+            if (!targetConversation) {
+              targetConversation = doc
+            }
+          }
+        }
+        
+        if (targetConversation) {
+          router.push(`/messages/${targetConversation.id}`)
+        } else {
+          alert("該当する会話が見つかりませんでした")
+        }
+      } else {
+        // 既存の会話がない場合は新規作成
+        const otherUserId = book.userRole === 'buyer' ? book.userId : book.buyerId
+        const conversationId = await createOrGetConversation(
+          user.uid,
+          otherUserId,
+          book.id
+        )
+        router.push(`/messages/${conversationId}`)
+      }
+    } catch (error) {
+      console.error("会話検索エラー:", error)
+      alert("メッセージ画面への遷移に失敗しました")
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader><CardTitle>取引中</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        {books.length === 0 ? (
+          <div className="text-center py-8">
+            <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+            <p className="text-muted-foreground">
+              取引中の教科書はありません
+            </p>
+          </div>
+        ) : books.map((book: any) => (
+          <Card key={book.id} className="p-3 md:p-4">
+            <div className="flex gap-3 md:gap-4">
+              <img src={book.imageUrl || "/placeholder.svg"} alt={book.title} className="w-16 h-20 md:w-20 md:h-28 object-cover rounded flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-sm md:text-lg truncate">{book.title}</h3>
+                <p className="text-xs md:text-sm text-muted-foreground truncate">{book.author}</p>
+                <p className="text-xs md:text-sm">価格：¥{book.price?.toLocaleString()}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant={book.userRole === 'buyer' ? 'default' : 'secondary'} className="text-xs">
+                    {book.userRole === 'buyer' ? '購入者' : '出品者'}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
+                    取引中
+                  </Badge>
+                </div>
+                <div className="mt-2 flex flex-col sm:flex-row gap-1 sm:gap-2">
+                  <Link href={`/marketplace/${book.id}`} className="flex-1 sm:flex-none">
+                    <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                      <BookOpen className="mr-1 h-3 w-3" /> 商品詳細
+                    </Button>
+                  </Link>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="w-full sm:w-auto"
+                    onClick={() => handleMessageOtherParty(book)}
+                  >
+                    <MessageSquare className="mr-1 h-3 w-3" /> メッセージ
+                  </Button>
                 </div>
               </div>
             </div>

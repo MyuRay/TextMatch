@@ -267,6 +267,102 @@ export default function ConversationPage() {
     }
   }
 
+  const handleSellToThisPerson = async () => {
+    if (!user || !textbook || !conversation || !otherUser) return
+    
+    // 出品者のみ実行可能
+    if (user.uid !== conversation.sellerId) {
+      alert("出品者のみが取引状況を変更できます")
+      return
+    }
+
+    const isConfirmed = window.confirm(
+      `${otherUser.name}さんに売りますか？\n\n確定すると：\n・教科書が「売切」になります\n・他の購入希望者とのやり取りは終了します\n・この操作は取り消せます`
+    )
+    
+    if (!isConfirmed) return
+
+    try {
+      // 教科書のステータスをsoldに更新し、取引状態をin_progressに設定
+      const textbookRef = doc(db, "books", textbook.id)
+      await updateDoc(textbookRef, {
+        status: 'sold',
+        buyerId: conversation.buyerId,
+        transactionStatus: 'in_progress', // 取引中
+        soldAt: serverTimestamp(),
+      })
+      
+      // 教科書の状態を更新
+      setTextbook((prev: any) => prev ? { 
+        ...prev, 
+        status: 'sold', 
+        buyerId: conversation.buyerId,
+        transactionStatus: 'in_progress'
+      } : null)
+      
+      // 成約完了メッセージを自動送信
+      const messagesRef = collection(db, "conversations", conversationId as string, "messages")
+      await addDoc(messagesRef, {
+        text: `🎉 成約完了！${otherUser.name}さんとの取引が成立しました。引き続きメッセージで詳細をやり取りしてください。`,
+        senderId: user.uid,
+        createdAt: serverTimestamp(),
+        isRead: false,
+        isSystemMessage: true, // システムメッセージフラグ
+      })
+      
+      alert(`${otherUser.name}さんとの取引が成立しました！`)
+    } catch (error) {
+      console.error("取引成立エラー:", error)
+      alert("取引の成立処理に失敗しました")
+    }
+  }
+
+  const handleReceiveComplete = async () => {
+    if (!user || !textbook || !conversation || !otherUser) return
+    
+    // 購入者のみ実行可能
+    if (user.uid !== conversation.buyerId) {
+      alert("購入者のみが受取完了できます")
+      return
+    }
+
+    const isConfirmed = window.confirm(
+      "商品を受け取りましたか？\n\n受取完了すると：\n・取引が完了します\n・この操作は取り消せません"
+    )
+    
+    if (!isConfirmed) return
+
+    try {
+      // 教科書の取引状態をcompletedに更新
+      const textbookRef = doc(db, "books", textbook.id)
+      await updateDoc(textbookRef, {
+        transactionStatus: 'completed',
+        completedAt: serverTimestamp(),
+      })
+      
+      // 教科書の状態を更新
+      setTextbook((prev: any) => prev ? { 
+        ...prev, 
+        transactionStatus: 'completed'
+      } : null)
+      
+      // 受取完了メッセージを自動送信
+      const messagesRef = collection(db, "conversations", conversationId as string, "messages")
+      await addDoc(messagesRef, {
+        text: `✅ ${user.displayName || '購入者'}さんが商品を受け取りました。取引完了です！お疲れ様でした。`,
+        senderId: user.uid,
+        createdAt: serverTimestamp(),
+        isRead: false,
+        isSystemMessage: true, // システムメッセージフラグ
+      })
+      
+      alert("受取完了しました！取引が完了しました。")
+    } catch (error) {
+      console.error("受取完了エラー:", error)
+      alert("受取完了の処理に失敗しました")
+    }
+  }
+
   if (loading || authLoading) {
     return (
       <div className="flex flex-col min-h-screen">
@@ -358,38 +454,79 @@ export default function ConversationPage() {
           {conversation && user && user.uid === conversation.sellerId && (
             <Card className="bg-blue-50 border-blue-200 mt-2">
               <CardContent className="p-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h4 className="font-medium text-blue-900 text-sm mb-1">📋 出品者メニュー</h4>
-                    {textbook?.status === 'sold' ? (
+                <div className="space-y-2">
+                  <h4 className="font-medium text-blue-900 text-sm">📋 出品者メニュー</h4>
+                  {textbook?.status === 'sold' ? (
+                    <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <p className="text-xs text-blue-800">成約済み</p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-green-300 text-green-700 hover:bg-green-50 text-xs px-2 py-1 h-6"
-                          onClick={() => handleStatusChange('available')}
-                        >
-                          <RotateCcw className="mr-1 h-3 w-3" />
-                          出品中に戻す
-                        </Button>
+                        <p className="text-xs text-green-800 font-medium">✅ {otherUser?.name}さんとの取引成立済み</p>
                       </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs text-blue-800">取引完了時</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-green-300 text-green-700 hover:bg-green-50 text-xs px-2 py-1 h-7"
+                        onClick={() => handleStatusChange('available')}
+                      >
+                        <RotateCcw className="mr-1 h-3 w-3" />
+                        出品中に戻す
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-xs text-blue-800">この人との取引を決定する場合</p>
+                      <div className="flex gap-2">
                         <Button
-                          variant="outline"
+                          variant="default"
                           size="sm"
-                          className="border-red-300 text-red-700 hover:bg-red-50 text-xs px-2 py-1 h-6"
-                          onClick={() => handleStatusChange('sold')}
+                          className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1 h-7"
+                          onClick={handleSellToThisPerson}
                         >
                           <CheckCircle className="mr-1 h-3 w-3" />
-                          成約済み
+                          {otherUser?.name}さんに売る
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-gray-300 text-gray-700 hover:bg-gray-50 text-xs px-2 py-1 h-7"
+                          onClick={() => handleStatusChange('sold')}
+                        >
+                          他の人に売った
                         </Button>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 購入者向け成約完了表示 */}
+          {conversation && user && user.uid === conversation.buyerId && textbook?.status === 'sold' && textbook?.buyerId === user.uid && (
+            <Card className="bg-green-50 border-green-200 mt-2">
+              <CardContent className="p-3">
+                {textbook?.transactionStatus === 'completed' ? (
+                  <div className="text-center">
+                    <h4 className="font-medium text-green-900 text-sm mb-1">✅ 取引完了</h4>
+                    <p className="text-xs text-green-800">
+                      取引が完了しました。ありがとうございました！
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-green-900 text-sm">🎉 取引成立！</h4>
+                    <p className="text-xs text-green-800 mb-2">
+                      あなたとの取引が成立しました。商品を受け取ったら下のボタンを押してください。
+                    </p>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 h-7 w-full"
+                      onClick={handleReceiveComplete}
+                    >
+                      📦 受け取った
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -408,6 +545,29 @@ export default function ConversationPage() {
             messages.map((msg) => {
               const isCurrentUser = msg.senderId === user?.uid
               const userProfile = isCurrentUser ? currentUserProfile : otherUser
+              const isSystemMessage = msg.isSystemMessage
+              
+              // システムメッセージの場合
+              if (isSystemMessage) {
+                return (
+                  <div key={msg.id} className="flex justify-center my-4">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 max-w-[80%]">
+                      <p className="text-sm text-green-800 text-center font-medium">{msg.text}</p>
+                      <div className="flex items-center justify-center gap-1 mt-1 text-xs text-green-600">
+                        <Clock className="h-3 w-3" />
+                        {msg.createdAt?.toDate?.() ? (
+                          msg.createdAt.toDate().toLocaleString('ja-JP', { 
+                            month: 'numeric', 
+                            day: 'numeric', 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })
+                        ) : "送信中..."}
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
               
               return (
                 <div

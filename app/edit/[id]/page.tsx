@@ -4,7 +4,7 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { doc, getDoc, updateDoc } from "firebase/firestore"
+import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Upload } from "lucide-react"
+import { ArrowLeft, Upload, Trash2 } from "lucide-react"
 
 export default function EditBookPage() {
   const router = useRouter()
@@ -30,6 +30,7 @@ export default function EditBookPage() {
   })
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     const fetchBook = async () => {
@@ -86,6 +87,27 @@ export default function EditBookPage() {
     })
     alert("教科書情報を更新しました！")
     router.push("/mypage")
+  }
+
+  const handleDelete = async () => {
+    const isConfirmed = window.confirm(
+      "本当にこの出品を取り消しますか？\n\n取り消すと：\n・出品一覧から削除されます\n・進行中のメッセージも削除されます\n・この操作は元に戻せません"
+    )
+    
+    if (!isConfirmed) return
+
+    try {
+      setIsDeleting(true)
+      const docRef = doc(db, "books", bookId)
+      await deleteDoc(docRef)
+      alert("出品を取り消しました")
+      router.push("/mypage")
+    } catch (error) {
+      console.error("削除エラー:", error)
+      alert("出品の取り消しに失敗しました")
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   if (loading) return <div className="container py-10">読み込み中...</div>
@@ -169,7 +191,25 @@ export default function EditBookPage() {
             </div>
           </CardContent>
           <CardFooter className="flex justify-between">
-            <Button type="button" variant="outline" onClick={() => router.push("/mypage")}>キャンセル</Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => router.push("/mypage")}>キャンセル</Button>
+              <Button 
+                type="button" 
+                variant="destructive" 
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex items-center gap-2"
+              >
+                {isDeleting ? (
+                  "取り消し中..."
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    出品取り消し
+                  </>
+                )}
+              </Button>
+            </div>
             <Button type="submit">更新する</Button>
           </CardFooter>
         </form>
