@@ -26,6 +26,7 @@ import { ArrowLeft, Send, User, BookOpen, Clock, CheckCircle, RotateCcw } from "
 import Link from "next/link"
 import { getUserProfile, getTextbookById, updateTextbookStatus } from "@/lib/firestore"
 import { sendEmailNotification, createMessageNotificationEmail } from "@/lib/emailService"
+import { createMessageNotification, createTransactionNotification, createReceiptNotification } from "@/lib/notifications"
 import { Header } from "../../components/header"
 
 export default function ConversationPage() {
@@ -150,6 +151,9 @@ export default function ConversationPage() {
       // プッシュ通知を送信
       await sendPushNotification()
       
+      // アプリ内通知を作成
+      await createAppNotification()
+      
       setNewMessage("")
     } catch (error) {
       console.error("メッセージ送信エラー:", error)
@@ -244,6 +248,31 @@ export default function ConversationPage() {
     }
   }
 
+  const createAppNotification = async () => {
+    try {
+      if (!conversation || !textbook || !user) return
+
+      // 受信者を特定（送信者でない方）
+      const recipientId = conversation.buyerId === user.uid ? conversation.sellerId : conversation.buyerId
+      
+      // 送信者の名前
+      const senderName = currentUserProfile.name || "ユーザー"
+
+      // アプリ内通知を作成
+      await createMessageNotification(
+        recipientId,
+        senderName,
+        textbook.title,
+        conversationId as string
+      )
+
+      console.log('📲 アプリ内通知作成完了')
+    } catch (error) {
+      console.error("アプリ内通知作成エラー:", error)
+      // 通知作成エラーでもメッセージ送信は継続
+    }
+  }
+
   const handleStatusChange = async (newStatus: 'available' | 'sold') => {
     if (!user || !textbook || !conversation) return
     
@@ -309,6 +338,14 @@ export default function ConversationPage() {
         isRead: false,
         isSystemMessage: true, // システムメッセージフラグ
       })
+
+      // 購入者に取引成立通知を送信
+      await createTransactionNotification(
+        conversation.buyerId,
+        textbook.title,
+        true, // 購入者向け
+        conversationId as string
+      )
       
       alert(`${otherUser.name}さんとの取引が成立しました！`)
     } catch (error) {
@@ -355,6 +392,14 @@ export default function ConversationPage() {
         isRead: false,
         isSystemMessage: true, // システムメッセージフラグ
       })
+
+      // 出品者に受取完了通知を送信
+      await createReceiptNotification(
+        textbook.userId, // 出品者ID
+        textbook.title,
+        otherUser.name || "購入者",
+        conversationId as string
+      )
       
       alert("受取完了しました！取引が完了しました。")
     } catch (error) {

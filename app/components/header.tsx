@@ -11,6 +11,7 @@ import { auth } from "@/lib/firebaseAuth"
 import { getUserUnreadMessageCount, saveFCMToken } from "@/lib/firestore"
 import { requestNotificationPermission } from "@/lib/firebaseMessaging"
 import { Heart, MessageSquare, Menu, X, Bell, BellOff } from "lucide-react"
+import { NotificationBell } from "./notification-bell"
 
 export function Header() {
   const { user, userProfile, loading } = useAuth()
@@ -127,19 +128,7 @@ export function Header() {
                   </span>
                 )}
               </Link>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleNotificationToggle}
-                className="flex items-center gap-1"
-                title={notificationEnabled ? "通知を無効にする" : "通知を有効にする"}
-              >
-                {notificationEnabled ? (
-                  <Bell className="h-4 w-4 text-green-600" />
-                ) : (
-                  <BellOff className="h-4 w-4 text-gray-400" />
-                )}
-              </Button>
+              <NotificationBell />
               <Link href="/mypage">
                 <Button variant="outline" size="sm" className="flex items-center gap-2 border-2 hover:bg-primary/5">
                   <Avatar className="w-6 h-6">
@@ -214,23 +203,13 @@ export function Header() {
                     </span>
                   )}
                 </Link>
-                <Button
-                  variant="ghost"
-                  onClick={handleNotificationToggle}
-                  className="w-full justify-start flex items-center gap-2 py-2"
-                >
-                  {notificationEnabled ? (
-                    <>
-                      <Bell className="h-4 w-4 text-green-600" />
-                      <span>通知ON</span>
-                    </>
-                  ) : (
-                    <>
-                      <BellOff className="h-4 w-4 text-gray-400" />
-                      <span>通知OFF</span>
-                    </>
-                  )}
-                </Button>
+                <div className="flex items-center gap-3 py-2">
+                  <Bell className="h-4 w-4" />
+                  <span>通知</span>
+                  <div className="ml-auto">
+                    <NotificationBell />
+                  </div>
+                </div>
                 <Link href="/mypage" onClick={() => setIsMobileMenuOpen(false)}>
                   <Button variant="outline" className="w-full justify-start flex items-center gap-3 border-2 hover:bg-primary/5">
                     <Avatar className="w-7 h-7">
