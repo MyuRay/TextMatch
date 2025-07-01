@@ -19,9 +19,9 @@ export default function DebugFCMTokenPage() {
       const settings = await getUserNotificationSettings(userId)
       setResult(settings)
       console.log("FCMトークン確認結果:", settings)
-    } catch (error) {
+    } catch (error: any) {
       console.error("FCMトークン確認エラー:", error)
-      setResult({ error: error.message })
+      setResult({ error: error?.message || String(error) })
     } finally {
       setLoading(false)
     }
@@ -56,9 +56,9 @@ export default function DebugFCMTokenPage() {
       const result = await response.json()
       console.log("手動プッシュ通知結果:", result)
       setResult({ ...result, apiCall: true })
-    } catch (error) {
+    } catch (error: any) {
       console.error("手動プッシュ通知エラー:", error)
-      setResult({ error: error.message, apiCall: true })
+      setResult({ error: error?.message || String(error), apiCall: true })
     } finally {
       setLoading(false)
     }
