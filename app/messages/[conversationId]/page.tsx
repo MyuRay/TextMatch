@@ -27,6 +27,7 @@ import Link from "next/link"
 import { getUserProfile, getTextbookById, updateTextbookStatus } from "@/lib/firestore"
 import { sendEmailNotification, createMessageNotificationEmail } from "@/lib/emailService"
 import { createMessageNotification, createTransactionNotification, createReceiptNotification } from "@/lib/notifications"
+import { sendPushNotification } from "@/lib/fcm"
 import { Header } from "../../components/header"
 
 export default function ConversationPage() {
@@ -136,6 +137,12 @@ export default function ConversationPage() {
   const handleSend = async () => {
     if (!newMessage.trim() || !user) return
 
+    console.log("📝 メッセージ送信開始:", {
+      senderId: user.uid,
+      message: newMessage,
+      conversationId: conversationId
+    })
+
     try {
       const messagesRef = collection(db, "conversations", conversationId as string, "messages")
       await addDoc(messagesRef, {
@@ -145,18 +152,39 @@ export default function ConversationPage() {
         isRead: false,
       })
       
+      console.log("✅ メッセージFirestore保存完了")
+      
       // メール通知を送信
-      await sendMessageNotification()
+      try {
+        console.log("📧 メール通知開始...")
+        await sendMessageNotification()
+        console.log("✅ メール通知完了")
+      } catch (error) {
+        console.error("❌ メール通知エラー:", error)
+      }
       
       // プッシュ通知を送信
-      await sendPushNotification()
+      try {
+        console.log("📱 プッシュ通知開始...")
+        await sendPushNotificationToUser()
+        console.log("✅ プッシュ通知完了")
+      } catch (error) {
+        console.error("❌ プッシュ通知エラー:", error)
+      }
       
       // アプリ内通知を作成
-      await createAppNotification()
+      try {
+        console.log("📲 アプリ内通知開始...")
+        await createAppNotification()
+        console.log("✅ アプリ内通知完了")
+      } catch (error) {
+        console.error("❌ アプリ内通知エラー:", error)
+      }
       
+      console.log("🏁 全ての通知処理完了")
       setNewMessage("")
     } catch (error) {
-      console.error("メッセージ送信エラー:", error)
+      console.error("❌ メッセージ送信エラー:", error)
       alert("メッセージの送信に失敗しました")
     }
   }
@@ -166,7 +194,17 @@ export default function ConversationPage() {
       if (!conversation || !textbook || !user) return
 
       // 受信者を特定（送信者でない方）
-      const recipientId = conversation.buyerId === user.uid ? conversation.sellerId : conversation.buyerId
+      let recipientId = null
+      if (conversation.buyerId === user.uid) {
+        recipientId = conversation.sellerId
+      } else if (conversation.sellerId === user.uid) {
+        recipientId = conversation.buyerId
+      }
+      
+      if (!recipientId || recipientId === user.uid) {
+        console.log("❌ メール通知: 受信者を特定できないか、自分自身への送信です")
+        return
+      }
       
       // 受信者の情報を取得
       const recipientDoc = await getDoc(doc(db, "users", recipientId))
@@ -205,45 +243,91 @@ export default function ConversationPage() {
     }
   }
 
-  const sendPushNotification = async () => {
+  const sendPushNotificationToUser = async () => {
+    console.log("🔔 sendPushNotificationToUser 開始")
+    
     try {
-      if (!conversation || !textbook || !user) return
+      console.log("📋 必要な値チェック:", {
+        conversation: !!conversation,
+        textbook: !!textbook,
+        user: !!user,
+        newMessage: newMessage
+      })
+      
+      console.log("📋 conversation データ詳細:", {
+        buyerId: conversation?.buyerId,
+        sellerId: conversation?.sellerId,
+        currentUserId: user?.uid
+      })
+      
+      if (!conversation || !textbook || !user) {
+        console.log("❌ 必要な値が不足しています")
+        return
+      }
 
       // 受信者を特定（送信者でない方）
-      const recipientId = conversation.buyerId === user.uid ? conversation.sellerId : conversation.buyerId
+      let recipientId = null
+      if (conversation.buyerId === user.uid) {
+        recipientId = conversation.sellerId
+      } else if (conversation.sellerId === user.uid) {
+        recipientId = conversation.buyerId
+      }
+      
+      console.log("📤 プッシュ通知送信先:", {
+        senderId: user.uid,
+        recipientId: recipientId,
+        conversationBuyerId: conversation.buyerId,
+        conversationSellerId: conversation.sellerId
+      })
+      
+      if (!recipientId) {
+        console.log("❌ 受信者を特定できませんでした（送信者が会話の参加者ではありません）")
+        return
+      }
+      
+      if (recipientId === user.uid) {
+        console.log("❌ 送信者と受信者が同じです")
+        return
+      }
       
       // 送信者の名前
       const senderName = currentUserProfile.name || "ユーザー"
+      console.log("👤 送信者名:", senderName)
       
       // メッセージプレビュー（最初の30文字）
       const messagePreview = newMessage.length > 30 
         ? newMessage.substring(0, 30) + "..." 
         : newMessage
+      console.log("💬 メッセージプレビュー:", messagePreview)
+
+      const notificationData = {
+        recipientId,
+        title: `${senderName}からメッセージ`,
+        body: `${textbook.title}: ${messagePreview}`,
+        data: {
+          type: 'message',
+          conversationId: conversationId as string,
+          bookId: textbook.id,
+          actionUrl: `/messages/${conversationId}`
+        }
+      }
+      console.log("📱 送信するプッシュ通知データ:", notificationData)
 
       // プッシュ通知を送信
-      const response = await fetch('/api/send-notification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          recipientId,
-          title: `${senderName}からメッセージ`,
-          body: `${textbook.title}: ${messagePreview}`,
-          data: {
-            conversationId: conversationId as string,
-            bookId: textbook.id
-          }
-        })
-      })
+      const success = await sendPushNotification(
+        recipientId,
+        notificationData.title,
+        notificationData.body,
+        notificationData.data
+      )
 
-      if (response.ok) {
-        console.log('📱 プッシュ通知送信完了')
+      if (success) {
+        console.log('✅ プッシュ通知送信完了')
       } else {
-        console.log('プッシュ通知送信に失敗しました')
+        console.log('❌ プッシュ通知送信に失敗しました')
       }
     } catch (error) {
-      console.error("プッシュ通知送信エラー:", error)
+      console.error("❌ プッシュ通知送信エラー:", error)
       // プッシュ通知エラーでもメッセージ送信は継続
     }
   }
@@ -253,7 +337,17 @@ export default function ConversationPage() {
       if (!conversation || !textbook || !user) return
 
       // 受信者を特定（送信者でない方）
-      const recipientId = conversation.buyerId === user.uid ? conversation.sellerId : conversation.buyerId
+      let recipientId = null
+      if (conversation.buyerId === user.uid) {
+        recipientId = conversation.sellerId
+      } else if (conversation.sellerId === user.uid) {
+        recipientId = conversation.buyerId
+      }
+      
+      if (!recipientId || recipientId === user.uid) {
+        console.log("❌ アプリ内通知: 受信者を特定できないか、自分自身への送信です")
+        return
+      }
       
       // 送信者の名前
       const senderName = currentUserProfile.name || "ユーザー"

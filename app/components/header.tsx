@@ -8,8 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/lib/useAuth"
 import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebaseAuth"
-import { getUserUnreadMessageCount, saveFCMToken } from "@/lib/firestore"
-import { requestNotificationPermission } from "@/lib/firebaseMessaging"
+import { getUserUnreadMessageCount } from "@/lib/firestore"
+import { useFCM } from "@/lib/useFCM"
 import { Heart, MessageSquare, Menu, X, Bell, BellOff } from "lucide-react"
 import { NotificationBell } from "./notification-bell"
 
@@ -17,7 +17,7 @@ export function Header() {
   const { user, userProfile, loading } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
-  const [notificationEnabled, setNotificationEnabled] = useState(false)
+  const { isSupported, permission, isEnabled, toggleNotification } = useFCM()
 
   const getInitials = (name?: string) => {
     if (!name) return "U"
@@ -34,20 +34,21 @@ export function Header() {
   }
 
   const handleNotificationToggle = async () => {
-    if (!notificationEnabled) {
-      const token = await requestNotificationPermission()
-      if (token && user) {
-        try {
-          await saveFCMToken(user.uid, token)
-          setNotificationEnabled(true)
-          console.log('通知が有効になりました')
-        } catch (error) {
-          console.error('FCMトークン保存エラー:', error)
-        }
+    console.log('通知ボタンクリック:', { permission, isSupported, isEnabled })
+    
+    try {
+      const newState = await toggleNotification()
+      
+      if (newState) {
+        console.log('✅ プッシュ通知がONになりました')
+        alert('プッシュ通知がONになりました！')
+      } else {
+        console.log('📴 プッシュ通知がOFFになりました')
+        alert('プッシュ通知がOFFになりました')
       }
-    } else {
-      setNotificationEnabled(false)
-      console.log('通知が無効になりました')
+    } catch (error) {
+      console.error('通知設定エラー:', error)
+      alert('通知設定中にエラーが発生しました。')
     }
   }
 
@@ -75,20 +76,8 @@ export function Header() {
     return () => clearInterval(interval)
   }, [user])
 
-  // 通知の初期化とフォアグラウンドメッセージの処理
-  useEffect(() => {
-    if (!user) return
-
-    // 通知許可状態をチェック
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setNotificationEnabled(Notification.permission === 'granted')
-    }
-
-    // 初期化完了
-    return () => {
-      // クリーンアップ処理
-    }
-  }, [user])
+  // プッシュ通知設定ボタンの表示条件
+  const showNotificationButton = user && isSupported
 
   return (
     <header className="border-b">
@@ -129,6 +118,21 @@ export function Header() {
                 )}
               </Link>
               <NotificationBell />
+              {showNotificationButton && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNotificationToggle}
+                  className="flex items-center gap-1"
+                  title={isEnabled ? "プッシュ通知ON (クリックでOFF)" : "プッシュ通知OFF (クリックでON)"}
+                >
+                  {isEnabled ? (
+                    <Bell className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <BellOff className="h-4 w-4 text-gray-400" />
+                  )}
+                </Button>
+              )}
               <Link href="/mypage">
                 <Button variant="outline" size="sm" className="flex items-center gap-2 border-2 hover:bg-primary/5">
                   <Avatar className="w-6 h-6">
@@ -206,8 +210,23 @@ export function Header() {
                 <div className="flex items-center gap-3 py-2">
                   <Bell className="h-4 w-4" />
                   <span>通知</span>
-                  <div className="ml-auto">
+                  <div className="ml-auto flex items-center gap-2">
                     <NotificationBell />
+                    {showNotificationButton && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleNotificationToggle}
+                        className="h-6 w-6 p-0"
+                        title={isEnabled ? "通知ON" : "通知OFF"}
+                      >
+                        {isEnabled ? (
+                          <Bell className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <BellOff className="h-4 w-4 text-gray-400" />
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
                 <Link href="/mypage" onClick={() => setIsMobileMenuOpen(false)}>

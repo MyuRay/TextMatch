@@ -19,22 +19,24 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage(function(payload) {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
-  const notificationTitle = payload.notification.title || '新着メッセージ';
+  const notificationTitle = payload.notification?.title || payload.data?.title || 'TextMatch';
   const notificationOptions = {
-    body: payload.notification.body || 'メッセージが届きました',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
-    tag: 'new-message',
+    body: payload.notification?.body || payload.data?.body || '新しい通知があります',
+    icon: '/logo.png',
+    badge: '/logo.png',
+    tag: payload.data?.type || 'notification',
     requireInteraction: true,
     actions: [
       {
         action: 'open',
-        title: 'メッセージを見る'
+        title: '開く'
+      },
+      {
+        action: 'close',
+        title: '閉じる'
       }
     ],
-    data: {
-      url: payload.data?.url || '/messages'
-    }
+    data: payload.data || {}
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
@@ -46,7 +48,13 @@ self.addEventListener('notificationclick', function(event) {
   
   event.notification.close();
   
-  const urlToOpen = event.notification.data?.url || '/messages';
+  if (event.action === 'close') {
+    return;
+  }
+  
+  // 開くURLを決定
+  const data = event.notification.data || {};
+  const urlToOpen = getUrlToOpen(data);
   
   if (event.action === 'open' || !event.action) {
     event.waitUntil(
@@ -57,7 +65,9 @@ self.addEventListener('notificationclick', function(event) {
         // 既に開いているタブがあるかチェック
         for (const client of clientList) {
           if (client.url.includes(self.location.origin) && 'focus' in client) {
-            client.navigate(urlToOpen);
+            if (urlToOpen !== self.location.origin) {
+              client.navigate(urlToOpen);
+            }
             return client.focus();
           }
         }
@@ -69,3 +79,26 @@ self.addEventListener('notificationclick', function(event) {
     );
   }
 });
+
+// 通知データから開くURLを決定
+function getUrlToOpen(data) {
+  const baseUrl = self.location.origin;
+  
+  if (data.actionUrl) {
+    return `${baseUrl}${data.actionUrl}`;
+  }
+  
+  if (data.conversationId) {
+    return `${baseUrl}/messages/${data.conversationId}`;
+  }
+  
+  if (data.bookId) {
+    return `${baseUrl}/marketplace/${data.bookId}`;
+  }
+  
+  if (data.url) {
+    return `${baseUrl}${data.url}`;
+  }
+  
+  return `${baseUrl}/notifications`;
+}
