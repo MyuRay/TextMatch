@@ -88,7 +88,7 @@ export async function requestNotificationPermission(): Promise<string | null> {
 
     console.log("✅ FCMトークン取得成功:", token.substring(0, 50) + "...")
     return token
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ FCMトークン取得エラー:", error)
     return null
   }
@@ -108,7 +108,7 @@ export async function saveFCMToken(userId: string, token: string, enabled: boole
     }, { merge: true })
 
     console.log("FCMトークン保存完了:", { enabled })
-  } catch (error) {
+  } catch (error: any) {
     console.error("FCMトークン保存エラー:", error)
     throw error
   }
@@ -133,7 +133,7 @@ export async function getUserFCMToken(userId: string): Promise<string | null> {
     }
 
     return data.fcmToken || null
-  } catch (error) {
+  } catch (error: any) {
     console.error("FCMトークン取得エラー:", error)
     return null
   }
@@ -175,10 +175,10 @@ export async function getUserNotificationSettings(userId: string): Promise<{
     console.log("📊 返り値:", result)
     
     return result
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ 通知設定取得エラー:", error)
-    console.error("エラー詳細:", error.message)
-    console.error("エラー型:", error.code)
+    console.error("エラー詳細:", error?.message || "不明")
+    console.error("エラー型:", error?.code || "不明")
     return {
       fcmToken: null,
       enabled: false,
@@ -221,7 +221,7 @@ export async function toggleNotificationEnabled(userId: string): Promise<boolean
       console.log(`✅ 通知を${newEnabled ? '有効' : '無効'}にしました`)
       return newEnabled
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("通知切り替えエラー:", error)
     return false
   }
@@ -347,7 +347,7 @@ export async function sendPushNotification(
     const result = await response.json()
     console.log("✅ プッシュ通知送信成功:", result)
     return true
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ プッシュ通知送信エラー:", error)
     return false
   }
@@ -370,7 +370,7 @@ export async function isFCMAvailable(): Promise<boolean> {
   try {
     if (typeof window === 'undefined') return false
     return await isSupported()
-  } catch {
+  } catch (error: any) {
     return false
   }
 }
