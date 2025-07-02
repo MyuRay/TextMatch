@@ -24,7 +24,11 @@ export function useFCM() {
 
   // FCMの初期化とサポート確認
   useEffect(() => {
+    let fcmInitialized = false
+    
     const initFCM = async () => {
+      if (fcmInitialized) return // 重複初期化を防ぐ
+      
       try {
         const supported = await isFCMAvailable()
         setIsSupported(supported)
@@ -33,11 +37,13 @@ export function useFCM() {
           setPermission(getNotificationPermission())
           await initializeFCM()
           
-          // フォアグラウンド通知を設定
+          // フォアグラウンド通知を設定（一度だけ）
           setupForegroundNotifications((payload) => {
             console.log("フォアグラウンド通知受信:", payload)
             // 必要に応じて追加の処理
           })
+          
+          fcmInitialized = true
         }
       } catch (error) {
         console.error("FCM初期化エラー:", error)

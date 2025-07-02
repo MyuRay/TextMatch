@@ -159,6 +159,30 @@ export async function markNotificationsAsRead(notificationIds: string[]): Promis
 }
 
 /**
+ * ユーザーのすべての未読通知を既読にする
+ */
+export async function markAllNotificationsAsRead(userId: string): Promise<void> {
+  try {
+    const q = query(
+      collection(db, "notifications"),
+      where("userId", "==", userId),
+      where("isRead", "==", false)
+    )
+    
+    const snapshot = await getDocs(q)
+    const updatePromises = snapshot.docs.map(doc => 
+      updateDoc(doc.ref, { isRead: true })
+    )
+    
+    await Promise.all(updatePromises)
+    console.log(`${snapshot.docs.length}件の通知を既読にしました`)
+  } catch (error) {
+    console.error("全通知既読更新エラー:", error)
+    throw error
+  }
+}
+
+/**
  * 通知を削除する
  */
 export async function deleteNotification(notificationId: string): Promise<void> {

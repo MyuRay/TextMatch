@@ -160,15 +160,22 @@ export function Header() {
           )}
         </nav>
 
-        {/* Mobile Menu Button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="lg:hidden"
-          onClick={toggleMobileMenu}
-        >
-          {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
+        {/* Mobile Actions */}
+        <div className="lg:hidden flex items-center gap-2">
+          {/* ログイン時のみ通知ベルを表示 */}
+          {!loading && user && (
+            <NotificationBell />
+          )}
+          
+          {/* Mobile Menu Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleMobileMenu}
+          >
+            {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+        </div>
       </div>
 
       {/* Mobile Navigation */}
@@ -209,9 +216,8 @@ export function Header() {
                 </Link>
                 <div className="flex items-center gap-3 py-2">
                   <Bell className="h-4 w-4" />
-                  <span>通知</span>
+                  <span>プッシュ通知設定</span>
                   <div className="ml-auto flex items-center gap-2">
-                    <NotificationBell />
                     {showNotificationButton && (
                       <Button
                         variant="ghost"

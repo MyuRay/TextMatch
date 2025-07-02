@@ -245,8 +245,8 @@ export function setupForegroundNotifications(onNotificationReceived?: (payload: 
       onNotificationReceived(payload)
     }
 
-    // ブラウザ通知を表示
-    if (payload.notification) {
+    // フォアグラウンド時はService Workerが動かないので、手動で通知表示
+    if (payload.notification && document.visibilityState === 'visible') {
       showBrowserNotification(
         payload.notification.title || "新しい通知",
         payload.notification.body || "",
@@ -266,15 +266,19 @@ function showBrowserNotification(title: string, body: string, data?: any) {
   }
 
   try {
+    // 重複防止のため一意なタグを生成
+    const uniqueTag = `textmatch-fg-${Date.now()}`
+    
     // 最小限のオプションでブラウザ通知を作成
     const options = {
       body: body,
       icon: '/logo.png',
-      tag: 'textmatch-notification'
-      // actions, requireInteraction, badge は削除
+      tag: uniqueTag,
+      requireInteraction: false // 自動で閉じるように
+      // actions は削除（フォアグラウンド通知では不要）
     }
 
-    console.log("通知作成中:", { title, options })
+    console.log("フォアグラウンド通知作成中:", { title, options })
     const notification = new Notification(title, options)
 
     // 通知クリック時の処理

@@ -11,6 +11,7 @@ import {
   getUserNotifications, 
   markNotificationAsRead,
   markNotificationsAsRead,
+  markAllNotificationsAsRead,
   deleteNotification,
   subscribeToNotifications,
   type Notification 
@@ -118,6 +119,18 @@ export default function NotificationsPage() {
     }
   }
 
+  // すべての未読通知を既読にする
+  const handleMarkAllAsRead = async () => {
+    if (!user || unreadCount === 0) return
+    
+    try {
+      await markAllNotificationsAsRead(user.uid)
+      setSelectedIds([])
+    } catch (error) {
+      console.error("全既読エラー:", error)
+    }
+  }
+
   // 全選択/全解除
   const handleSelectAll = () => {
     if (selectedIds.length === notifications.length) {
@@ -184,6 +197,17 @@ export default function NotificationsPage() {
             >
               {selectedIds.length === notifications.length ? "全解除" : "全選択"}
             </Button>
+            
+            {unreadCount > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleMarkAllAsRead}
+              >
+                <Check className="h-4 w-4 mr-1" />
+                すべて既読 ({unreadCount})
+              </Button>
+            )}
             
             {selectedIds.length > 0 && (
               <Button 
