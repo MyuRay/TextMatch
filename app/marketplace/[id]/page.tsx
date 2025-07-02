@@ -10,8 +10,9 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Header } from "@/app/components/header"
 import { Footer } from "@/app/components/footer"
+import { OfficialIcon } from "@/app/components/official-badge"
 import { ImageGallery } from "@/app/components/image-gallery"
-import { getTextbookById, getUserNickname, createOrGetConversation, Textbook, isFavorite, addToFavorites, removeFromFavorites, updateTextbookStatus } from "@/lib/firestore"
+import { getTextbookById, getUserNickname, getUserProfile, createOrGetConversation, Textbook, isFavorite, addToFavorites, removeFromFavorites, updateTextbookStatus } from "@/lib/firestore"
 import { formatDate } from "@/lib/utils"
 import { useAuth } from "@/lib/useAuth"
 
@@ -24,6 +25,7 @@ export default function TextbookDetailPage() {
   const [favoriteStatus, setFavoriteStatus] = useState(false)
   const [favoriteLoading, setFavoriteLoading] = useState(false)
   const [sellerName, setSellerName] = useState("")
+  const [sellerProfile, setSellerProfile] = useState<{name: string, avatarUrl?: string, isOfficial?: boolean, officialType?: string} | null>(null)
 
   const conditionMap: Record<string, string> = {
     new: "新品",
@@ -45,11 +47,13 @@ export default function TextbookDetailPage() {
 
       if (book.userId) {
         try {
-          const nickname = await getUserNickname(book.userId)
-          setSellerName(nickname)
+          const profile = await getUserProfile(book.userId)
+          setSellerProfile(profile)
+          setSellerName(profile?.name || "不明")
         } catch (error) {
           console.error("出品者情報取得エラー:", error)
           setSellerName("不明")
+          setSellerProfile(null)
         }
       }
 
@@ -205,7 +209,14 @@ export default function TextbookDetailPage() {
                   <User className="h-5 w-5 mr-2 text-muted-foreground shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium">出品者</p>
-                    <p className="text-muted-foreground">{sellerName || "不明"}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-muted-foreground">{sellerName || "不明"}</p>
+                      <OfficialIcon 
+                        isOfficial={sellerProfile?.isOfficial} 
+                        officialType={sellerProfile?.officialType as 'admin' | 'support' | 'team'} 
+                        className="scale-75"
+                      />
+                    </div>
                     {textbook.university && (
                       <p className="text-xs text-muted-foreground">{textbook.university}</p>
                     )}

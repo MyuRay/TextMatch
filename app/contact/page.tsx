@@ -1,7 +1,7 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Instagram, Twitter } from "lucide-react"
+import { Instagram, Twitter, Mail } from "lucide-react"
 import { Header } from "../components/header"
 import { Footer } from "../components/footer"
 
@@ -23,9 +23,21 @@ export default function ContactPage() {
             {/* SNS連絡先 */}
             <Card className="shadow-lg mb-8">
               <CardHeader>
-                <CardTitle className="text-center">SNSでお気軽にご連絡ください</CardTitle>
+                <CardTitle className="text-center">お気軽にご連絡ください</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
+                <a
+                  href="mailto:info@textmatch.info?subject=TextMatchに関するお問い合わせ&body=お問い合わせ内容をご記載ください。"
+                  className="flex items-center gap-4 p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors group"
+                >
+                  <Mail className="h-8 w-8 group-hover:scale-110 transition-transform" />
+                  <div>
+                    <p className="font-semibold text-lg">メール</p>
+                    <p className="text-sm opacity-90">info@textmatch.info</p>
+                    <p className="text-xs opacity-75 mt-1">お気軽にメールでお問い合わせください</p>
+                  </div>
+                </a>
+
                 <a
                   href="https://instagram.com/masato.__.2004"
                   target="_blank"
@@ -64,11 +76,11 @@ export default function ContactPage() {
               <CardContent className="space-y-4">
                 <div className="border-b border-gray-200 pb-3">
                   <p className="font-medium text-gray-900 mb-2">Q. 取引でトラブルが発生しました</p>
-                  <p className="text-gray-600">A. InstagramまたはTwitterのDMで詳細をお知らせください。迅速に対応いたします。</p>
+                  <p className="text-gray-600">A. メール（info@textmatch.info）またはSNSのDMで詳細をお知らせください。迅速に対応いたします。</p>
                 </div>
                 <div className="border-b border-gray-200 pb-3">
                   <p className="font-medium text-gray-900 mb-2">Q. 新機能の要望があります</p>
-                  <p className="text-gray-600">A. SNSのDMでお気軽にご要望をお聞かせください。検討させていただきます。</p>
+                  <p className="text-gray-600">A. メールまたはSNSのDMでお気軽にご要望をお聞かせください。検討させていただきます。</p>
                 </div>
                 <div>
                   <p className="font-medium text-gray-900 mb-2">Q. 教科書の出品方法がわかりません</p>

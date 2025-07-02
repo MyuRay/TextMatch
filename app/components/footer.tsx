@@ -10,11 +10,14 @@ export function Footer() {
             <p className="text-sm text-muted-foreground">学生のためのフリーマーケット</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 text-center">
-            <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
+            <Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground">
               利用規約
             </Link>
-            <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
+            <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">
               プライバシーポリシー
+            </Link>
+            <Link href="/legal" className="text-sm text-muted-foreground hover:text-foreground">
+              特定商取引法に基づく表記
             </Link>
             <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground">
               お問い合わせ

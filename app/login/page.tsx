@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Header } from "../components/header"
 import { Footer } from "../components/footer"
 import { Eye, EyeOff } from "lucide-react"
-import { loginUser } from "@/lib/firebaseAuth" // ✅ 追加
+import { loginUser, checkEmailVerification, resendVerificationEmail } from "@/lib/firebaseAuth" // ✅ 追加
 
 export default function LoginPage() {
   const router = useRouter()
@@ -26,6 +26,8 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showEmailVerification, setShowEmailVerification] = useState(false)
+  const [userEmail, setUserEmail] = useState("")
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
@@ -66,6 +68,17 @@ export default function LoginPage() {
       const user = await loginUser(formData.email, formData.password)
       console.log("ログイン成功:", user)
 
+      // メール認証チェック
+      const isEmailVerified = checkEmailVerification(user)
+      console.log("メール認証状態:", isEmailVerified)
+
+      if (!isEmailVerified) {
+        console.log("メール未認証のため認証画面を表示")
+        setUserEmail(formData.email)
+        setShowEmailVerification(true)
+        return
+      }
+
       // ✅ トップページに遷移して Header を再描画
       router.push("/")
     } catch (error: any) {
@@ -92,6 +105,66 @@ export default function LoginPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleResendEmail = async () => {
+    try {
+      await resendVerificationEmail()
+      alert("認証メールを再送信しました。メールボックスをご確認ください。")
+    } catch (error: any) {
+      console.error("認証メール再送信エラー:", error)
+      alert("認証メールの再送信に失敗しました。")
+    }
+  }
+
+  // メール認証待ち画面
+  if (showEmailVerification) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-1 container mx-auto py-10 px-4">
+          <Card className="max-w-md mx-auto">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold text-orange-600">メール認証が必要です</CardTitle>
+              <CardDescription>アカウントを有効化してください</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-center">
+              <div className="text-6xl mb-4">📧</div>
+              <p className="text-sm text-muted-foreground">
+                <strong>{userEmail}</strong> にメール認証が必要です。
+              </p>
+              <p className="text-sm text-muted-foreground">
+                受信箱のメールから認証を完了してください。
+              </p>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
+                <p className="text-xs text-yellow-800">
+                  ⚠️ 認証完了後、再度ログインしてください
+                </p>
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-2">
+              <Button 
+                onClick={handleResendEmail}
+                variant="outline"
+                className="w-full"
+              >
+                認証メールを再送信
+              </Button>
+              <Button 
+                onClick={() => {
+                  setShowEmailVerification(false)
+                  setFormData({ email: "", password: "", rememberMe: false })
+                }} 
+                className="w-full"
+              >
+                ログイン画面に戻る
+              </Button>
+            </CardFooter>
+          </Card>
+        </main>
+        <Footer />
+      </div>
+    )
   }
 
   return (

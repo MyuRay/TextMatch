@@ -29,14 +29,15 @@ import { sendEmailNotification, createMessageNotificationEmail } from "@/lib/ema
 import { createMessageNotification, createTransactionNotification, createReceiptNotification } from "@/lib/notifications"
 import { sendPushNotification } from "@/lib/fcm"
 import { Header } from "../../components/header"
+import { OfficialIcon } from "../../components/official-badge"
 
 export default function ConversationPage() {
   const { conversationId } = useParams()
   const [messages, setMessages] = useState<any[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [conversation, setConversation] = useState<any>(null)
-  const [otherUser, setOtherUser] = useState<{name: string, avatarUrl?: string}>({name: ""})
-  const [currentUserProfile, setCurrentUserProfile] = useState<{name: string, avatarUrl?: string}>({name: ""})
+  const [otherUser, setOtherUser] = useState<{name: string, avatarUrl?: string, isOfficial?: boolean, officialType?: string}>({name: ""})
+  const [currentUserProfile, setCurrentUserProfile] = useState<{name: string, avatarUrl?: string, isOfficial?: boolean, officialType?: string}>({name: ""})
   const [textbook, setTextbook] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const { user, loading: authLoading } = useAuth()
@@ -538,7 +539,13 @@ export default function ConversationPage() {
               </Avatar>
               
               <div className="flex-1">
-                <h1 className="font-semibold text-lg">{otherUser?.name || "不明なユーザー"}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="font-semibold text-lg">{otherUser?.name || "不明なユーザー"}</h1>
+                  <OfficialIcon 
+                    isOfficial={otherUser?.isOfficial} 
+                    officialType={otherUser?.officialType as 'admin' | 'support' | 'team'} 
+                  />
+                </div>
                 {textbook && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <BookOpen className="h-3 w-3" />
@@ -723,8 +730,13 @@ export default function ConversationPage() {
                   )}
                   
                   <div className={`max-w-[70%] ${isCurrentUser ? 'text-right' : 'text-left'}`}>
-                    <div className={`text-xs text-muted-foreground mb-1 ${isCurrentUser ? 'text-right' : 'text-left'}`}>
-                      {userProfile?.name || (isCurrentUser ? "あなた" : "不明")}
+                    <div className={`text-xs text-muted-foreground mb-1 ${isCurrentUser ? 'text-right' : 'text-left'} flex items-center gap-1 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
+                      <span>{userProfile?.name || (isCurrentUser ? "あなた" : "不明")}</span>
+                      <OfficialIcon 
+                        isOfficial={userProfile?.isOfficial} 
+                        officialType={userProfile?.officialType as 'admin' | 'support' | 'team'} 
+                        className="scale-75"
+                      />
                     </div>
                     <div
                       className={`p-3 rounded-2xl ${

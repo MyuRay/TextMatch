@@ -42,9 +42,13 @@ export interface UserProfile {
   email: string
   studentId?: string
   university: string
-  department?: string
+  grade?: string           // 学年（新規追加）
   nickname?: string
   avatarUrl?: string
+  isOfficial?: boolean
+  officialType?: 'admin' | 'support' | 'team'
+  verifiedAt?: Timestamp
+  emailVerified?: boolean  // メール認証状態（新規追加）
   createdAt: Timestamp
 }
 
@@ -139,8 +143,8 @@ export const getUserNickname = async (userId: string): Promise<string> => {
   }
 }
 
-// ✅ ユーザーの詳細情報取得（ニックネーム+アバター）
-export const getUserProfile = async (userId: string): Promise<{name: string, avatarUrl?: string} | null> => {
+// ✅ ユーザーの詳細情報取得（ニックネーム+アバター+公式フラグ）
+export const getUserProfile = async (userId: string): Promise<{name: string, avatarUrl?: string, isOfficial?: boolean, officialType?: string} | null> => {
   try {
     const userDoc = await getDoc(doc(db, "users", userId))
     
@@ -148,7 +152,9 @@ export const getUserProfile = async (userId: string): Promise<{name: string, ava
       const data = userDoc.data()
       return {
         name: data.nickname || data.fullName || "名無し",
-        avatarUrl: data.avatarUrl
+        avatarUrl: data.avatarUrl,
+        isOfficial: data.isOfficial || false,
+        officialType: data.officialType
       }
     } else {
       return { name: "不明なユーザー" }
@@ -516,4 +522,41 @@ export const getFCMToken = async (userId: string): Promise<string | null> => {
     console.error('FCMトークンの取得に失敗しました:', error)
   }
   return null
+}
+
+// ✅ ユーザーを公式アカウントに設定
+export const setUserAsOfficial = async (
+  userId: string, 
+  officialType: 'admin' | 'support' | 'team' = 'admin'
+): Promise<void> => {
+  try {
+    const userRef = doc(db, "users", userId)
+    await setDoc(userRef, {
+      isOfficial: true,
+      officialType: officialType,
+      verifiedAt: Timestamp.now()
+    }, { merge: true })
+    
+    console.log(`ユーザー ${userId} を公式アカウント (${officialType}) に設定しました`)
+  } catch (error) {
+    console.error("公式アカウント設定失敗:", error)
+    throw error
+  }
+}
+
+// ✅ ユーザーの公式ステータスを削除
+export const removeOfficialStatus = async (userId: string): Promise<void> => {
+  try {
+    const userRef = doc(db, "users", userId)
+    await setDoc(userRef, {
+      isOfficial: false,
+      officialType: null,
+      verifiedAt: null
+    }, { merge: true })
+    
+    console.log(`ユーザー ${userId} の公式ステータスを削除しました`)
+  } catch (error) {
+    console.error("公式ステータス削除失敗:", error)
+    throw error
+  }
 }

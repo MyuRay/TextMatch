@@ -9,13 +9,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Header } from "../components/header"
 import { Footer } from "../components/footer"
 import { AvatarUpload } from "../components/avatar-upload"
 import { Eye, EyeOff } from "lucide-react"
-import { registerUser } from "@/lib/firebaseAuth"
+import { registerUser, sendVerificationEmail, updateUserProfile } from "@/lib/firebaseAuth"
 import { saveUserProfile } from "@/lib/firestore"
 import { uploadAvatar } from "@/lib/storage"
+import { isUniversityEmail, getEmailValidationError, suggestEmailDomain } from "@/lib/universityDomains"
 
 // 日本全国の大学リスト
 const UNIVERSITIES = [
@@ -118,11 +120,14 @@ export default function RegisterPage() {
   const router = useRouter()
   const [formData, setFormData] = useState({
     fullName: "",
+    nickname: "",
     email: "",
     university: "",
-    department: "",
+    grade: "",
     password: "",
     confirmPassword: "",
+    agreeToTerms: false,
+    agreeToPrivacy: false,
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -132,10 +137,15 @@ export default function RegisterPage() {
   const [showUniversitySuggestions, setShowUniversitySuggestions] = useState(false)
   const [universitySuggestions, setUniversitySuggestions] = useState<string[]>([])
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [emailDomainSuggestion, setEmailDomainSuggestion] = useState<string | null>(null)
+  const [registrationComplete, setRegistrationComplete] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    const { name, value, type, checked } = e.target
+    setFormData((prev) => ({ 
+      ...prev, 
+      [name]: type === "checkbox" ? checked : value 
+    }))
 
     if (name === "university" && value.trim()) {
       const searchTerm = value.toLowerCase()
@@ -154,8 +164,13 @@ export default function RegisterPage() {
       
       setUniversitySuggestions(suggestions)
       setShowUniversitySuggestions(suggestions.length > 0)
+      
+      // 大学名に基づいてメールドメインを提案
+      const domain = suggestEmailDomain(value)
+      setEmailDomainSuggestion(domain)
     } else if (name === "university") {
       setShowUniversitySuggestions(false)
+      setEmailDomainSuggestion(null)
     }
 
     if (errors[name]) {
@@ -171,24 +186,32 @@ export default function RegisterPage() {
     }
   }
 
-  const handleSelectChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, department: value }))
-    if (errors.department) {
-      setErrors((prev) => ({ ...prev, department: "" }))
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }))
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }))
     }
   }
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
-    if (!formData.fullName.trim()) newErrors.fullName = "表示名を入力してください"
-    if (!formData.email) newErrors.email = "メールアドレスを入力してください"
-    else if (!/^\S+@\S+\.\S+$/.test(formData.email)) newErrors.email = "有効なメールアドレスを入力してください"
+    if (!formData.fullName.trim()) newErrors.fullName = "本名を入力してください"
+    if (!formData.nickname.trim()) newErrors.nickname = "表示名（ニックネーム）を入力してください"
+    
+    // メールアドレスの大学ドメインチェック
+    const emailError = getEmailValidationError(formData.email)
+    if (emailError) newErrors.email = emailError
+    
     if (!formData.university) newErrors.university = "大学名を入力してください"
     if (!formData.password) newErrors.password = "パスワードを入力してください"
     else if (formData.password.length < 8) newErrors.password = "パスワードは8文字以上で入力してください"
     if (!formData.confirmPassword) newErrors.confirmPassword = "パスワードを再入力してください"
     else if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "パスワードが一致しません"
+    
+    // 利用規約・プライバシーポリシー同意チェック
+    if (!formData.agreeToTerms) newErrors.agreeToTerms = "利用規約への同意が必要です"
+    if (!formData.agreeToPrivacy) newErrors.agreeToPrivacy = "プライバシーポリシーへの同意が必要です"
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -205,6 +228,11 @@ export default function RegisterPage() {
       const user = await registerUser(formData.email, formData.password)
       console.log("Firebase Auth登録成功:", user.uid)
 
+      // ユーザープロフィール更新（Firebase Auth）
+      await updateUserProfile(user, {
+        displayName: formData.nickname,
+      })
+
       // アバター画像をアップロード
       let avatarUrl = ""
       if (avatarFile) {
@@ -218,17 +246,30 @@ export default function RegisterPage() {
         }
       }
 
+      // Firestoreにプロフィール保存
       await saveUserProfile(user.uid, {
         fullName: formData.fullName,
+        nickname: formData.nickname,
         email: formData.email,
         university: formData.university,
-        department: formData.department,
+        grade: formData.grade,
         avatarUrl: avatarUrl,
+        emailVerified: false, // 初期状態は未認証
       })
       console.log("プロフィール保存成功")
 
-      alert("アカウント登録が完了しました！")
-      router.push("/login")
+      // メール認証送信
+      try {
+        await sendVerificationEmail(user)
+        console.log("認証メール送信成功")
+        setRegistrationComplete(true)
+      } catch (emailError) {
+        console.error("認証メール送信エラー:", emailError)
+        // メール送信エラーでも登録は完了とする
+        alert("アカウント登録は完了しましたが、認証メールの送信に失敗しました。ログイン後に再送信してください。")
+        router.push("/login")
+      }
+      
     } catch (error: any) {
       console.error("登録エラー詳細:", error)
       console.error("エラーコード:", error.code)
@@ -251,6 +292,49 @@ export default function RegisterPage() {
     }
   }
 
+  // 登録完了後の認証待ち画面
+  if (registrationComplete) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-1 container mx-auto py-10 px-4">
+          <Card className="max-w-md mx-auto">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold text-green-600">登録完了</CardTitle>
+              <CardDescription>メール認証が必要です</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-center">
+              <div className="text-6xl mb-4">📧</div>
+              <p className="text-sm text-muted-foreground">
+                <strong>{formData.email}</strong> に認証メールを送信しました。
+              </p>
+              <p className="text-sm text-muted-foreground">
+                メール内のリンクをクリックして、アカウントを有効化してください。
+              </p>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
+                <p className="text-xs text-yellow-800">
+                  ⚠️ メールが届かない場合は、迷惑メールフォルダもご確認ください。
+                </p>
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-2">
+              <Button 
+                onClick={() => router.push("/login")} 
+                className="w-full"
+              >
+                ログインページへ
+              </Button>
+              <p className="text-xs text-center text-muted-foreground">
+                認証完了後、ログインできるようになります
+              </p>
+            </CardFooter>
+          </Card>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -264,9 +348,27 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fullName">表示名</Label>
-                <Input id="fullName" name="fullName" placeholder="" value={formData.fullName} onChange={handleChange} />
+                <Label htmlFor="fullName">本名 *</Label>
+                <Input id="fullName" name="fullName" placeholder="田中 太郎" value={formData.fullName} onChange={handleChange} />
+                <p className="text-xs text-muted-foreground">
+                   本名は他のユーザーには公開されません（身元確認・緊急時連絡用）
+                </p>
                 {errors.fullName && <p className="text-sm text-destructive">{errors.fullName}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nickname">表示名（ニックネーム）*</Label>
+                <Input 
+                  id="nickname" 
+                  name="nickname" 
+                  placeholder="たなか、太郎、Taro など" 
+                  value={formData.nickname} 
+                  onChange={handleChange} 
+                />
+                <p className="text-xs text-muted-foreground">
+                   他のユーザーに表示される名前です
+                </p>
+                {errors.nickname && <p className="text-sm text-destructive">{errors.nickname}</p>}
               </div>
 
               <div className="space-y-2">
@@ -274,14 +376,29 @@ export default function RegisterPage() {
                 <AvatarUpload 
                   avatarFile={avatarFile}
                   setAvatarFile={setAvatarFile}
-                  userName={formData.fullName}
+                  userName={formData.nickname || formData.fullName}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">メールアドレス</Label>
-                <Input id="email" name="email" type="email" placeholder="example@university.ac.jp" value={formData.email} onChange={handleChange} />
+                <Label htmlFor="email">メールアドレス *</Label>
+                <Input 
+                  id="email" 
+                  name="email" 
+                  type="email" 
+                  placeholder="example@gmail.com" 
+                  value={formData.email} 
+                  onChange={handleChange} 
+                />
+                {emailDomainSuggestion && (
+                  <p className="text-xs text-blue-600">
+                    💡 {formData.university}の推奨ドメイン: @{emailDomainSuggestion}
+                  </p>
+                )}
                 {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                <p className="text-xs text-muted-foreground">
+                  メール認証に使用されます
+                </p>
               </div>
 
 
@@ -312,8 +429,30 @@ export default function RegisterPage() {
                 {errors.university && <p className="text-sm text-destructive">{errors.university}</p>}
               </div>
 
+
               <div className="space-y-2">
-                {errors.department && <p className="text-sm text-destructive">{errors.department}</p>}
+                <Label htmlFor="grade">学年（任意）</Label>
+                <Select value={formData.grade} onValueChange={(value) => handleSelectChange('grade', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="学年を選択（任意）" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="学部1年">学部1年</SelectItem>
+                    <SelectItem value="学部2年">学部2年</SelectItem>
+                    <SelectItem value="学部3年">学部3年</SelectItem>
+                    <SelectItem value="学部4年">学部4年</SelectItem>
+                    <SelectItem value="学部5年">学部5年</SelectItem>
+                    <SelectItem value="学部6年">学部6年</SelectItem>
+                    <SelectItem value="修士1年">修士1年</SelectItem>
+                    <SelectItem value="修士2年">修士2年</SelectItem>
+                    <SelectItem value="博士1年">博士1年</SelectItem>
+                    <SelectItem value="博士2年">博士2年</SelectItem>
+                    <SelectItem value="博士3年">博士3年</SelectItem>
+                    <SelectItem value="研究生">研究生</SelectItem>
+                    <SelectItem value="科目等履修生">科目等履修生</SelectItem>
+                    <SelectItem value="その他">その他</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -336,6 +475,65 @@ export default function RegisterPage() {
                   </Button>
                 </div>
                 {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword}</p>}
+              </div>
+
+              {/* 利用規約・プライバシーポリシー同意 */}
+              <div className="space-y-4 pt-4">
+                <div className="border-t pt-4">
+                  <div className="space-y-3">
+                    <div className="flex items-start space-x-3">
+                      <Checkbox 
+                        id="agreeToTerms"
+                        name="agreeToTerms"
+                        checked={formData.agreeToTerms}
+                        onCheckedChange={(checked) => {
+                          setFormData(prev => ({ ...prev, agreeToTerms: checked as boolean }))
+                          if (errors.agreeToTerms) {
+                            setErrors(prev => ({ ...prev, agreeToTerms: "" }))
+                          }
+                        }}
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                        <label
+                          htmlFor="agreeToTerms"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          <Link href="/terms" target="_blank" className="text-primary hover:underline">
+                            利用規約
+                          </Link>
+                          に同意する *
+                        </label>
+                        {errors.agreeToTerms && <p className="text-xs text-destructive">{errors.agreeToTerms}</p>}
+                      </div>
+                    </div>
+
+                    <div className="flex items-start space-x-3">
+                      <Checkbox 
+                        id="agreeToPrivacy"
+                        name="agreeToPrivacy"
+                        checked={formData.agreeToPrivacy}
+                        onCheckedChange={(checked) => {
+                          setFormData(prev => ({ ...prev, agreeToPrivacy: checked as boolean }))
+                          if (errors.agreeToPrivacy) {
+                            setErrors(prev => ({ ...prev, agreeToPrivacy: "" }))
+                          }
+                        }}
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                        <label
+                          htmlFor="agreeToPrivacy"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          <Link href="/privacy" target="_blank" className="text-primary hover:underline">
+                            プライバシーポリシー
+                          </Link>
+                          に同意する *
+                        </label>
+                        {errors.agreeToPrivacy && <p className="text-xs text-destructive">{errors.agreeToPrivacy}</p>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
 

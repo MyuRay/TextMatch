@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { Header } from "../components/header"
 import { Footer } from "../components/footer"
+import { OfficialIcon } from "../components/official-badge"
 
 export default function MyPage() {
   const [activeTab, setActiveTab] = useState("profile")
@@ -215,7 +216,13 @@ export default function MyPage() {
                   <AvatarFallback>{avatarFallback}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <h2 className="text-lg font-bold">{userData.fullName}</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-bold">{userData.fullName}</h2>
+                    <OfficialIcon 
+                      isOfficial={userData.isOfficial} 
+                      officialType={userData.officialType} 
+                    />
+                  </div>
                   <p className="text-sm text-muted-foreground">{userData.university}</p>
                 </div>
               </div>
@@ -254,7 +261,13 @@ export default function MyPage() {
                     <AvatarFallback>{avatarFallback}</AvatarFallback>
                   </Avatar>
                   <div className="text-center space-y-1">
-                    <h2 className="text-xl font-bold">{userData.fullName}</h2>
+                    <div className="flex items-center justify-center gap-2">
+                      <h2 className="text-xl font-bold">{userData.fullName}</h2>
+                      <OfficialIcon 
+                        isOfficial={userData.isOfficial} 
+                        officialType={userData.officialType} 
+                      />
+                    </div>
                     <p className="text-sm text-muted-foreground">{userData.university}</p>
                   </div>
                 </div>
