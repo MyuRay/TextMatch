@@ -107,7 +107,7 @@ export default function TermsOfService() {
   );
 }
 
-function Section({ title, children }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-6">
       <h2 className="font-semibold mb-2">{title}</h2>
