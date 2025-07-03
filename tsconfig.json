@@ -23,11 +23,5 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": [
-    "node_modules",
-    "app/admin/**/*",
-    "app/api/admin/**/*",
-    "lib/adminAuth.ts",
-    "lib/adminFirestore.ts"
-  ]
+  "exclude": ["node_modules"]
 }
