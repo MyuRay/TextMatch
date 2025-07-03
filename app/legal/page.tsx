@@ -20,7 +20,7 @@ export default function LegalPage() {
                 <CardTitle className="text-lg">販売事業者名</CardTitle>
               </CardHeader>
               <CardContent>
-                <p>村井雅斗</p>
+                <p>村井雅斗(個人事業主)</p>
               </CardContent>
             </Card>
 
@@ -30,7 +30,7 @@ export default function LegalPage() {
                 <CardTitle className="text-lg">所在地</CardTitle>
               </CardHeader>
               <CardContent>
-                <p>請求があった場合遅滞なく開示します</p>
+                <p>千葉県(請求があった場合詳細を遅滞なく開示します)</p>
               </CardContent>
             </Card>
 
@@ -44,7 +44,7 @@ export default function LegalPage() {
                   <p><strong>電話番号：</strong>請求があった場合遅滞なく開示します</p>
                   <p><strong>メールアドレス：</strong>info@textmatch.info</p>
                   <p className="text-sm text-muted-foreground">
-                    ※お問い合わせは上記メールアドレスもしくは問い合わせフォームからお願いいたします
+                    ※お問い合わせは上記メールアドレスもしくはお問い合わせフォームからお願いいたします
                   </p>
                 </div>
               </CardContent>
@@ -60,6 +60,16 @@ export default function LegalPage() {
               </CardContent>
             </Card>
 
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">販売価格</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>各商品ページに税込価格を表示しています。</p>
+              </CardContent>
+            </Card>
+
+
             {/* 追加手数料等の追加料金 */}
             <Card>
               <CardHeader>
@@ -67,6 +77,7 @@ export default function LegalPage() {
               </CardHeader>
               <CardContent>
                 <p>商品の代金には、手数料などを含みます。追加費用は発生しません。</p>
+                <p>当サービスは、販売額の10%をサービス手数料として出品者から徴収します。</p>
               </CardContent>
             </Card>
 
@@ -78,6 +89,7 @@ export default function LegalPage() {
               <CardContent>
                 <div className="space-y-2">
                   <p>クレジットカード決済（Stripe）など</p>
+                  <p>支払時期：購入手続き完了時に即時決済されます。</p>
                 </div>
               </CardContent>
             </Card>
@@ -162,6 +174,15 @@ export default function LegalPage() {
               </CardContent>
             </Card>
 
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">動作環境</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>本サービスは最新のGoogle Chrome, Safari, Firefox等のブラウザに対応しています。</p>
+              </CardContent>
+            </Card>
+
             {/* その他 */}
             <Card>
               <CardHeader>
@@ -186,7 +207,6 @@ export default function LegalPage() {
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   )
 }
