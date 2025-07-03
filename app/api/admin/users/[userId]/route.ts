@@ -5,13 +5,13 @@ import { NextRequest, NextResponse } from "next/server"
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     // TODO: 管理者認証チェック
     
     const { action } = await request.json()
-    const { userId } = params
+    const { userId } = await params
 
     // Firebase Admin SDKの動的インポート
     let db
@@ -98,12 +98,12 @@ export async function PATCH(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     // TODO: 管理者認証チェック
     
-    const { userId } = params
+    const { userId } = await params
     
     // Firebase Admin SDKの動的インポート
     let db

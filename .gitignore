@@ -30,6 +30,15 @@ firebase-debug.log
 
 # typescript
 *.tsbuildinfo
-next-env.d.tsunitext-8181a-firebase-adminsdk-fbsvc-5c7842f73b.json 
+next-env.d.ts
+
+# admin panel
+/app/admin/
+/lib/adminAuth.ts
+/lib/adminFirestore.ts
+/app/api/admin/
+
+# firebase admin
+unitext-8181a-firebase-adminsdk-fbsvc-5c7842f73b.json 
 "*.json" 
 "unitext-8181a-firebase-adminsdk-*.json" 

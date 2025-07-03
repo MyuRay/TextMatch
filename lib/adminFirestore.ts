@@ -41,12 +41,15 @@ export async function getUsersClient(params: {
     
     // データを取得
     const snapshot = await getDocs(q)
-    let users = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      // パスワードなどの機密情報は除外
-      password: undefined,
-    }))
+    let users = snapshot.docs.map(doc => {
+      const data = doc.data() as any
+      return {
+        id: doc.id,
+        ...data,
+        // パスワードなどの機密情報は除外
+        password: undefined,
+      }
+    })
     
     // 検索フィルタリング
     if (params.search) {
@@ -111,10 +114,13 @@ export async function getDashboardStatsClient() {
       firestoreLimit(5)
     )
     const recentUsersSnapshot = await getDocs(recentUsersQuery)
-    const recentUsers = recentUsersSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }))
+    const recentUsers = recentUsersSnapshot.docs.map(doc => {
+      const data = doc.data() as any
+      return {
+        id: doc.id,
+        ...data
+      }
+    })
     
     // 売上計算（売却済み教科書の5%手数料）
     const soldBooksQuery = query(
@@ -123,7 +129,7 @@ export async function getDashboardStatsClient() {
     )
     const soldBooksSnapshot = await getDocs(soldBooksQuery)
     const revenue = soldBooksSnapshot.docs.reduce((total, doc) => {
-      const bookData = doc.data()
+      const bookData = doc.data() as any
       const price = bookData.price || 0
       return total + (price * 0.05) // 5%の手数料
     }, 0)
@@ -143,10 +149,10 @@ export async function getDashboardStatsClient() {
       stats,
       recentUsers: recentUsers.map(user => ({
         id: user.id,
-        fullName: user.fullName,
-        nickname: user.nickname,
-        university: user.university,
-        createdAt: user.createdAt
+        fullName: user.fullName || null,
+        nickname: user.nickname || null,
+        university: user.university || null,
+        createdAt: user.createdAt || null
       }))
     }
   } catch (error) {

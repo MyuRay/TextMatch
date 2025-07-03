@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState } from "react"
-import { onAuthStateChanged, User } from "firebase/auth"
+import { onAuthStateChanged, User, signOut as firebaseSignOut } from "firebase/auth"
 import { auth } from "./firebaseAuth"
 import { getFullUserProfile, UserProfile } from "./firestore"
 
@@ -9,18 +9,29 @@ interface AuthContextType {
   user: User | null
   userProfile: UserProfile | null
   loading: boolean
+  signOut: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   userProfile: null,
-  loading: true
+  loading: true,
+  signOut: async () => {}
 })
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const signOut = async () => {
+    try {
+      await firebaseSignOut(auth)
+    } catch (error) {
+      console.error("ログアウトエラー:", error)
+      throw error
+    }
+  }
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -45,7 +56,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading }}>
+    <AuthContext.Provider value={{ user, userProfile, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   )

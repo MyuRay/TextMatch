@@ -97,10 +97,13 @@ export async function GET(request: NextRequest) {
       .limit(5)
       .get()
     
-    const recentUsers = recentUsersSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }))
+    const recentUsers = recentUsersSnapshot.docs.map(doc => {
+      const data = doc.data() as any
+      return {
+        id: doc.id,
+        ...data
+      }
+    })
 
     const stats = {
       totalUsers: usersSnapshot.data().count,
@@ -115,10 +118,10 @@ export async function GET(request: NextRequest) {
       stats,
       recentUsers: recentUsers.map(user => ({
         id: user.id,
-        fullName: user.fullName,
-        nickname: user.nickname,
-        university: user.university,
-        createdAt: user.createdAt
+        fullName: user.fullName || null,
+        nickname: user.nickname || null,
+        university: user.university || null,
+        createdAt: user.createdAt || null
       }))
     })
 
