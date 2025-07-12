@@ -12,6 +12,7 @@ import { TextbookCard } from "./textbook-card"
 import { getAllTextbooks, Textbook } from "@/lib/firestore"
 import { Header } from "../components/header"
 import { Footer } from "../components/footer"
+// import StripeConnectButton from "@/components/stripe-connect-button"
 import { useAuth } from "@/lib/useAuth"
 
 export default function MarketplacePage() {
@@ -90,7 +91,12 @@ export default function MarketplacePage() {
           <div className="flex flex-col gap-6">
             <div className="space-y-4">
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold mb-3 md:mb-4">出品一覧</h1>
+                <div className="flex items-center justify-between mb-3 md:mb-4">
+                  <h1 className="text-2xl md:text-3xl font-bold">出品一覧</h1>
+                  {/* {user && (
+                    <StripeConnectButton />
+                  )} */}
+                </div>
                 <div className="mb-4 md:mb-6 p-3 md:p-4 bg-orange-50 border border-orange-200 rounded-lg max-w-2xl mx-auto">
                   <p className="text-orange-800 font-medium text-sm md:text-base text-center">
                     🧪 現在テスト運用中です！0円での教科書の取引にご協力をお願いします

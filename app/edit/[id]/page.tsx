@@ -82,7 +82,7 @@ export default function EditBookPage() {
     const docRef = doc(db, "books", bookId)
     await updateDoc(docRef, {
       ...formData,
-      price: 0, // テスト運用中は0円固定
+      price: parseFloat(formData.price) || 0,
       imageUrl: imagePreview,
     })
     alert("教科書情報を更新しました！")
@@ -120,9 +120,9 @@ export default function EditBookPage() {
 
       <h1 className="text-3xl font-bold mb-4 text-center">教科書情報の編集</h1>
       
-      <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg max-w-2xl mx-auto">
-        <p className="text-orange-800 font-medium text-center">
-          🧪 <strong>テスト運用中</strong> - 価格は0円固定です。取引場所は編集できます。
+      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg max-w-2xl mx-auto">
+        <p className="text-blue-800 font-medium text-center">
+          教科書の情報を編集できます。価格や取引場所などを自由に変更可能です。
         </p>
       </div>
 
@@ -143,8 +143,18 @@ export default function EditBookPage() {
                   <Input id="author" name="author" value={formData.author} onChange={handleChange} required />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="price">価格（円）- テスト運用中は0円固定</Label>
-                  <Input id="price" name="price" type="number" value="0" disabled className="bg-gray-100" />
+                  <Label htmlFor="price">価格（円）</Label>
+                  <Input 
+                    id="price" 
+                    name="price" 
+                    type="number" 
+                    value={formData.price} 
+                    onChange={handleChange}
+                    placeholder="例: 1500"
+                    min="0"
+                    step="1"
+                    required
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="condition">状態</Label>

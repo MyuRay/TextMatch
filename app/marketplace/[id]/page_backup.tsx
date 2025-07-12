@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft, Calendar, MapPin, MessageCircle, User, BookOpen, Heart, CheckCircle, RotateCcw, CreditCard } from "lucide-react"
+import { ArrowLeft, Calendar, MapPin, MessageCircle, User, BookOpen, Heart, CheckCircle, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -104,7 +104,6 @@ export default function TextbookDetailPage() {
       alert("ステータスの変更に失敗しました")
     }
   }
-
 
   if (loading) {
     return (
@@ -279,58 +278,55 @@ export default function TextbookDetailPage() {
               )}
               
               {/* 連絡・お気に入りボタン */}
-              <div className="flex flex-col gap-4">
-                
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Button
-                    className="flex-1"
-                    variant="outline"
-                    disabled={textbook?.status === 'sold'}
-                    onClick={async () => {
-                      try {
-                        console.log("連絡ボタンクリック - ユーザー:", user?.uid)
-                        console.log("連絡ボタンクリック - 出品者:", textbook?.userId)
-                        
-                        if (!user || !textbook?.userId) {
-                          console.log("ユーザーまたは出品者情報がありません")
-                          router.push("/login")
-                          return
-                        }
-
-                        if (user.uid === textbook.userId) {
-                          alert("自分の出品には連絡できません")
-                          return
-                        }
-
-                        console.log("会話作成開始...")
-                        const conversationId = await createOrGetConversation(
-                          user.uid,
-                          textbook.userId,
-                          textbook.id
-                        )
-                        console.log("作成された会話ID:", conversationId)
-
-                        router.push(`/messages/${conversationId}`)
-                      } catch (error) {
-                        console.error("会話作成エラー:", error)
-                        const errorMessage = error instanceof Error ? error.message : String(error)
-                        alert(`エラーが発生しました: ${errorMessage}`)
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button
+                  className="flex-1"
+                  variant="outline"
+                  disabled={textbook?.status === 'sold'}
+                  onClick={async () => {
+                    try {
+                      console.log("連絡ボタンクリック - ユーザー:", user?.uid)
+                      console.log("連絡ボタンクリック - 出品者:", textbook?.userId)
+                      
+                      if (!user || !textbook?.userId) {
+                        console.log("ユーザーまたは出品者情報がありません")
+                        router.push("/login")
+                        return
                       }
-                    }}
-                  >
-                    <MessageCircle className="mr-2 h-4 w-4" />
-                    {textbook?.status === 'sold' ? '売切済' : '出品者に連絡する'}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="flex-1" 
-                    onClick={handleFavoriteToggle}
-                    disabled={favoriteLoading || !user}
-                  >
-                    <Heart className={`mr-2 h-4 w-4 ${favoriteStatus ? "fill-current text-red-500" : ""}`} />
-                    {favoriteLoading ? "処理中..." : favoriteStatus ? "お気に入り済み" : "お気に入りに追加"}
-                  </Button>
-                </div>
+
+                      if (user.uid === textbook.userId) {
+                        alert("自分の出品には連絡できません")
+                        return
+                      }
+
+                      console.log("会話作成開始...")
+                      const conversationId = await createOrGetConversation(
+                        user.uid,
+                        textbook.userId,
+                        textbook.id
+                      )
+                      console.log("作成された会話ID:", conversationId)
+
+                      router.push(`/messages/${conversationId}`)
+                    } catch (error) {
+                      console.error("会話作成エラー:", error)
+                      const errorMessage = error instanceof Error ? error.message : String(error)
+                      alert(`エラーが発生しました: ${errorMessage}`)
+                    }
+                  }}
+                >
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  {textbook?.status === 'sold' ? '売切済' : '出品者に連絡する'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="flex-1" 
+                  onClick={handleFavoriteToggle}
+                  disabled={favoriteLoading || !user}
+                >
+                  <Heart className={`mr-2 h-4 w-4 ${favoriteStatus ? "fill-current text-red-500" : ""}`} />
+                  {favoriteLoading ? "処理中..." : favoriteStatus ? "お気に入り済み" : "お気に入りに追加"}
+                </Button>
               </div>
             </div>
           </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { collection, doc, getDoc, getDocs, query, where, setDoc } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
@@ -23,6 +23,7 @@ import {
 import { Header } from "../components/header"
 import { Footer } from "../components/footer"
 import { OfficialIcon } from "../components/official-badge"
+import StripeConnectButton from "@/components/stripe-connect-button"
 
 export default function MyPage() {
   const [activeTab, setActiveTab] = useState("profile")
@@ -34,13 +35,73 @@ export default function MyPage() {
   const [soldBooks, setSoldBooks] = useState<Textbook[]>([])
   const [dataLoading, setDataLoading] = useState(true)
   const [favoritesLoading, setFavoritesLoading] = useState(false)
-  const { user, loading } = useAuth()
+  const { user, userProfile, loading, refreshUserProfile } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     const fetchUserData = async () => {
       if (!user) {
         router.push("/login")
+        return
+      }
+
+      // Stripe設定完了チェック
+      if (searchParams.get('stripe_setup') === 'success') {
+        const urlAccountId = searchParams.get('account_id')
+        const localAccountId = localStorage.getItem('stripe_account_id')
+        const stripeAccountId = urlAccountId || localAccountId
+        
+        console.log('Stripe設定完了処理:', {
+          urlAccountId,
+          localAccountId,
+          stripeAccountId,
+          userId: user.uid
+        })
+        
+        if (stripeAccountId) {
+          try {
+            console.log('Firestoreにアカウント情報を保存中...', stripeAccountId)
+            
+            // Firestoreのユーザー情報を更新
+            await setDoc(doc(db, "users", user.uid), {
+              stripeAccountId: stripeAccountId,
+            }, { merge: true })
+            
+            console.log('Firestoreにアカウント情報を保存完了')
+            
+            // localStorage を削除
+            localStorage.removeItem('stripe_account_id')
+            
+            // プロフィールを更新
+            await refreshUserProfile()
+            
+            alert('Stripe Connectの設定が完了しました！これで決済を受け取ることができます。')
+            
+            // URLパラメータを削除してページをリロード
+            router.replace('/mypage')
+            return
+          } catch (error) {
+            console.error('Stripe Account ID保存エラー:', error)
+            alert('設定の保存中にエラーが発生しました。もう一度お試しください。')
+          }
+        } else {
+          console.warn('アカウントIDが見つかりません')
+          alert('アカウント情報が見つかりません。もう一度設定してください。')
+          router.replace('/mypage')
+          return
+        }
+      }
+
+      // エラーメッセージ処理
+      const error = searchParams.get('error')
+      if (error === 'missing_account') {
+        alert('アカウント情報が見つかりません。もう一度設定してください。')
+        router.replace('/mypage')
+        return
+      } else if (error === 'refresh_failed') {
+        alert('設定の更新に失敗しました。もう一度お試しください。')
+        router.replace('/mypage')
         return
       }
       
@@ -292,7 +353,7 @@ export default function MyPage() {
           </div>
 
           <div className="space-y-6">
-            {activeTab === "profile" && <ProfileCard user={userData} />}
+            {activeTab === "profile" && <ProfileCard user={userData} userProfile={userProfile} />}
             {activeTab === "selling" && <BooksListCard title="出品中の教科書" books={sellingBooks} isEditable />}
             {activeTab === "transactions" && <TransactionBooksCard books={transactionBooks} />}
             {activeTab === "sold" && <BooksListCard title="売却履歴" books={soldBooks} isSold />}
@@ -358,7 +419,7 @@ function TabButton({ label, icon, active, onClick, mobile = false }: {
   )
 }
 
-function ProfileCard({ user }: { user: UserProfile }) {
+function ProfileCard({ user, userProfile }: { user: UserProfile, userProfile: UserProfile | null }) {
   const [isEditing, setIsEditing] = useState(false)
   const [editData, setEditData] = useState({
     fullName: user.fullName,
@@ -570,6 +631,30 @@ function ProfileCard({ user }: { user: UserProfile }) {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">登録日</p>
                 <p className="text-base">{user.createdAt?.toDate?.()?.toLocaleDateString() || "不明"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">決済設定（Stripe Connect）</p>
+                <div className="flex items-center gap-2 mt-1">
+                  {userProfile?.stripeAccountId ? (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="default" className="bg-green-600">設定済み</Badge>
+                      <span className="text-sm text-muted-foreground">決済を受け取ることができます</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <Badge variant="secondary">未設定</Badge>
+                      <p className="text-xs text-muted-foreground">
+                        教科書を販売して決済を受け取るには、Stripe Connectの設定が必要です
+                      </p>
+                      <StripeConnectButton 
+                        onConnected={(accountId) => {
+                          // アカウント連携完了後の処理
+                          window.location.reload()
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </>

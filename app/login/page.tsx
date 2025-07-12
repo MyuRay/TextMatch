@@ -68,16 +68,16 @@ export default function LoginPage() {
       const user = await loginUser(formData.email, formData.password)
       console.log("ログイン成功:", user)
 
-      // メール認証チェック
-      const isEmailVerified = checkEmailVerification(user)
-      console.log("メール認証状態:", isEmailVerified)
+      // メール認証チェック（一時的に無効化）
+      // const isEmailVerified = checkEmailVerification(user)
+      // console.log("メール認証状態:", isEmailVerified)
 
-      if (!isEmailVerified) {
-        console.log("メール未認証のため認証画面を表示")
-        setUserEmail(formData.email)
-        setShowEmailVerification(true)
-        return
-      }
+      // if (!isEmailVerified) {
+      //   console.log("メール未認証のため認証画面を表示")
+      //   setUserEmail(formData.email)
+      //   setShowEmailVerification(true)
+      //   return
+      // }
 
       // ✅ トップページに遷移して Header を再描画
       router.push("/")
@@ -93,6 +93,8 @@ export default function LoginPage() {
         errorMsg = "パスワードが間違っています"
       } else if (error.code === "auth/invalid-email") {
         errorMsg = "無効なメールアドレスです"
+      } else if (error.code === "auth/invalid-credential") {
+        errorMsg = "メールアドレスまたはパスワードが間違っています"
       } else if (error.code === "auth/user-disabled") {
         errorMsg = "このアカウントは無効化されています"
       } else if (error.code === "auth/too-many-requests") {

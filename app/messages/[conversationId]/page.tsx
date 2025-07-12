@@ -22,7 +22,8 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Send, User, BookOpen, Clock, CheckCircle, RotateCcw } from "lucide-react"
+import { ArrowLeft, Send, User, BookOpen, Clock, CheckCircle, RotateCcw, CreditCard } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import Link from "next/link"
 import { getUserProfile, getTextbookById, updateTextbookStatus } from "@/lib/firestore"
 import { sendEmailNotification, createMessageNotificationEmail } from "@/lib/emailService"
@@ -30,6 +31,7 @@ import { createMessageNotification, createTransactionNotification, createReceipt
 import { sendPushNotification } from "@/lib/fcm"
 import { Header } from "../../components/header"
 import { OfficialIcon } from "../../components/official-badge"
+import StripePaymentForm from "@/components/stripe-payment-form"
 
 export default function ConversationPage() {
   const { conversationId } = useParams()
@@ -40,6 +42,10 @@ export default function ConversationPage() {
   const [currentUserProfile, setCurrentUserProfile] = useState<{name: string, avatarUrl?: string, isOfficial?: boolean, officialType?: string}>({name: ""})
   const [textbook, setTextbook] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [showPaymentConfirm, setShowPaymentConfirm] = useState(false)
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [paymentLoading, setPaymentLoading] = useState(false)
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
 
@@ -407,12 +413,12 @@ export default function ConversationPage() {
     if (!isConfirmed) return
 
     try {
-      // 教科書のステータスをsoldに更新し、取引状態をin_progressに設定
+      // 教科書のステータスをsoldに更新し、取引状態をselectedに設定
       const textbookRef = doc(db, "books", textbook.id)
       await updateDoc(textbookRef, {
         status: 'sold',
         buyerId: conversation.buyerId,
-        transactionStatus: 'in_progress', // 取引中
+        transactionStatus: 'in_progress', // 購入者選択済み（決済待ち）
         soldAt: serverTimestamp(),
       })
       
@@ -427,7 +433,7 @@ export default function ConversationPage() {
       // 成約完了メッセージを自動送信
       const messagesRef = collection(db, "conversations", conversationId as string, "messages")
       await addDoc(messagesRef, {
-        text: `🎉 成約完了！${otherUser.name}さんとの取引が成立しました。引き続きメッセージで詳細をやり取りしてください。`,
+        text: `🎉 取引相手決定！${otherUser.name}さんとの取引が成立しました。${otherUser.name}さんは決済ボタンで支払いを行ってください。`,
         senderId: user.uid,
         createdAt: serverTimestamp(),
         isRead: false,
@@ -446,6 +452,106 @@ export default function ConversationPage() {
     } catch (error) {
       console.error("取引成立エラー:", error)
       alert("取引の成立処理に失敗しました")
+    }
+  }
+
+  const handlePayment = async () => {
+    if (!user || !textbook || !conversation || !otherUser) {
+      alert("必要な情報が不足しています")
+      return
+    }
+    
+    // 購入者のみ実行可能
+    if (user.uid !== conversation.buyerId) {
+      alert("購入者のみが決済できます")
+      return
+    }
+
+    // 価格の妥当性確認
+    if (!textbook.price || textbook.price <= 0) {
+      alert("無効な価格です")
+      return
+    }
+
+    setPaymentLoading(true)
+    try {
+      // 出品者のStripe Connect情報を確認
+      const sellerProfile = await getUserProfile(conversation.sellerId)
+      if (!sellerProfile?.stripeAccountId) {
+        alert("出品者がStripe Connectの設定を完了していません。\n直接やり取りして現金取引を行ってください。")
+        return
+      }
+
+      console.log('Payment Intent作成開始:', {
+        amount: textbook.price,
+        sellerAccountId: sellerProfile.stripeAccountId,
+        textbookId: textbook.id,
+        buyerId: user.uid
+      })
+
+      const response = await fetch('/api/stripe/payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: textbook.price * 100, // 円をセントに変換
+          connectedAccountId: sellerProfile.stripeAccountId,
+          textbookId: textbook.id,
+          buyerId: user.uid,
+        }),
+      })
+      
+      const data = await response.json()
+      console.log('Payment Intent Response:', data)
+      
+      if (response.ok && data.client_secret) {
+        setClientSecret(data.client_secret)
+        setPaymentDialogOpen(true)
+      } else {
+        const errorMessage = data.error || 'Payment Intent作成に失敗しました'
+        console.error('Payment Intent Error:', errorMessage)
+        alert('決済の準備に失敗しました: ' + errorMessage)
+      }
+    } catch (error) {
+      console.error('Payment intent creation error:', error)
+      alert('決済の準備中にネットワークエラーが発生しました。インターネット接続を確認してください。')
+    } finally {
+      setPaymentLoading(false)
+    }
+  }
+
+  const handlePaymentSuccess = async () => {
+    setPaymentDialogOpen(false)
+    
+    try {
+      // 教科書の取引状態をpaidに更新
+      const textbookRef = doc(db, "books", textbook.id)
+      await updateDoc(textbookRef, {
+        transactionStatus: 'paid', // 決済完了
+        paidAt: serverTimestamp(),
+      })
+      
+      // 教科書の状態を更新
+      setTextbook((prev: any) => prev ? { 
+        ...prev, 
+        transactionStatus: 'paid'
+      } : null)
+      
+      // 決済完了メッセージを自動送信
+      const messagesRef = collection(db, "conversations", conversationId as string, "messages")
+      await addDoc(messagesRef, {
+        text: `💳 ${user?.displayName || '購入者'}さんが決済を完了しました。商品の受け渡しを行ってください。`,
+        senderId: user!.uid,
+        createdAt: serverTimestamp(),
+        isRead: false,
+        isSystemMessage: true,
+      })
+      
+      alert("決済が完了しました！出品者と受け渡しの詳細を相談してください。")
+    } catch (error) {
+      console.error("決済後処理エラー:", error)
+      alert("決済は完了しましたが、ステータス更新でエラーが発生しました")
     }
   }
 
@@ -646,7 +752,8 @@ export default function ConversationPage() {
             </Card>
           )}
 
-          {/* 購入者向け成約完了表示 */}
+
+          {/* 購入者向け決済・受取表示 */}
           {conversation && user && user.uid === conversation.buyerId && textbook?.status === 'sold' && textbook?.buyerId === user.uid && (
             <Card className="bg-green-50 border-green-200 mt-2">
               <CardContent className="p-3">
@@ -656,6 +763,57 @@ export default function ConversationPage() {
                     <p className="text-xs text-green-800">
                       取引が完了しました。ありがとうございました！
                     </p>
+                  </div>
+                ) : textbook?.transactionStatus === 'paid' ? (
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-green-900 text-sm">💳 決済完了</h4>
+                    <p className="text-xs text-green-800 mb-2">
+                      決済が完了しました。商品を受け取ったら下のボタンを押してください。
+                    </p>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 h-7 w-full"
+                      onClick={handleReceiveComplete}
+                    >
+                      📦 受け取った
+                    </Button>
+                  </div>
+                ) : textbook?.transactionStatus === 'in_progress' ? (
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-green-900 text-sm">🎉 取引成立！</h4>
+                    <p className="text-xs text-green-800 mb-2">
+                      あなたが選ばれました。決済を行ってください。
+                    </p>
+                    <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 h-7 w-full"
+                          onClick={handlePayment}
+                          disabled={paymentLoading}
+                        >
+                          <CreditCard className="mr-1 h-3 w-3" />
+                          {paymentLoading ? '準備中...' : `¥${textbook.price?.toLocaleString()}で決済`}
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                          <DialogTitle>決済情報の入力</DialogTitle>
+                        </DialogHeader>
+                        {clientSecret && (
+                          <div className="p-4">
+                            <StripePaymentForm
+                              clientSecret={clientSecret}
+                              amount={textbook.price}
+                              textbookTitle={textbook.title}
+                              onSuccess={handlePaymentSuccess}
+                            />
+                          </div>
+                        )}
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 ) : (
                   <div className="space-y-2">

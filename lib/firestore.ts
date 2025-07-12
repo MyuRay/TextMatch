@@ -49,6 +49,7 @@ export interface UserProfile {
   officialType?: 'admin' | 'support' | 'team'
   verifiedAt?: Timestamp
   emailVerified?: boolean  // メール認証状態（新規追加）
+  stripeAccountId?: string // Stripe Connect アカウントID（新規追加）
   createdAt: Timestamp
 }
 
@@ -144,7 +145,7 @@ export const getUserNickname = async (userId: string): Promise<string> => {
 }
 
 // ✅ ユーザーの詳細情報取得（ニックネーム+アバター+公式フラグ）
-export const getUserProfile = async (userId: string): Promise<{name: string, avatarUrl?: string, isOfficial?: boolean, officialType?: string} | null> => {
+export const getUserProfile = async (userId: string): Promise<{name: string, avatarUrl?: string, isOfficial?: boolean, officialType?: string, stripeAccountId?: string} | null> => {
   try {
     const userDoc = await getDoc(doc(db, "users", userId))
     
@@ -154,7 +155,8 @@ export const getUserProfile = async (userId: string): Promise<{name: string, ava
         name: data.nickname || data.fullName || "名無し",
         avatarUrl: data.avatarUrl,
         isOfficial: data.isOfficial || false,
-        officialType: data.officialType
+        officialType: data.officialType,
+        stripeAccountId: data.stripeAccountId
       }
     } else {
       return { name: "不明なユーザー" }

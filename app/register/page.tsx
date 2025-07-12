@@ -258,17 +258,19 @@ export default function RegisterPage() {
       })
       console.log("プロフィール保存成功")
 
-      // メール認証送信
-      try {
-        await sendVerificationEmail(user)
-        console.log("認証メール送信成功")
-        setRegistrationComplete(true)
-      } catch (emailError) {
-        console.error("認証メール送信エラー:", emailError)
-        // メール送信エラーでも登録は完了とする
-        alert("アカウント登録は完了しましたが、認証メールの送信に失敗しました。ログイン後に再送信してください。")
-        router.push("/login")
-      }
+      // メール認証送信（一時的に無効化）
+      // try {
+      //   await sendVerificationEmail(user)
+      //   console.log("認証メール送信成功")
+      //   setRegistrationComplete(true)
+      // } catch (emailError) {
+      //   console.error("認証メール送信エラー:", emailError)
+      //   // メール送信エラーでも登録は完了とする
+      //   alert("アカウント登録は完了しましたが、認証メールの送信に失敗しました。ログイン後に再送信してください。")
+      
+      // 登録完了画面を表示
+      console.log("アカウント登録完了（メール認証スキップ）")
+      setRegistrationComplete(true)
       
     } catch (error: any) {
       console.error("登録エラー詳細:", error)
@@ -292,7 +294,7 @@ export default function RegisterPage() {
     }
   }
 
-  // 登録完了後の認証待ち画面
+  // 登録完了後の画面（メール認証なし）
   if (registrationComplete) {
     return (
       <div className="flex flex-col min-h-screen">
@@ -301,19 +303,19 @@ export default function RegisterPage() {
           <Card className="max-w-md mx-auto">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl font-bold text-green-600">登録完了</CardTitle>
-              <CardDescription>メール認証が必要です</CardDescription>
+              <CardDescription>すぐにログインできます</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-center">
-              <div className="text-6xl mb-4">📧</div>
+              <div className="text-6xl mb-4">✅</div>
               <p className="text-sm text-muted-foreground">
-                <strong>{formData.email}</strong> に認証メールを送信しました。
+                <strong>{formData.email}</strong> でアカウントが作成されました。
               </p>
               <p className="text-sm text-muted-foreground">
-                メール内のリンクをクリックして、アカウントを有効化してください。
+                すぐにログインしてuniTexをお楽しみください。
               </p>
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
-                <p className="text-xs text-yellow-800">
-                  ⚠️ メールが届かない場合は、迷惑メールフォルダもご確認ください。
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-4">
+                <p className="text-xs text-green-800">
+                  ✅ メール認証は現在無効化されています
                 </p>
               </div>
             </CardContent>

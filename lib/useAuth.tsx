@@ -10,13 +10,15 @@ interface AuthContextType {
   userProfile: UserProfile | null
   loading: boolean
   signOut: () => Promise<void>
+  refreshUserProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   userProfile: null,
   loading: true,
-  signOut: async () => {}
+  signOut: async () => {},
+  refreshUserProfile: async () => {}
 })
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -30,6 +32,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       console.error("ログアウトエラー:", error)
       throw error
+    }
+  }
+
+  const refreshUserProfile = async () => {
+    if (user) {
+      try {
+        console.log('ユーザープロフィールを更新中...')
+        const profile = await getFullUserProfile(user.uid)
+        console.log('更新されたプロフィール:', profile)
+        setUserProfile(profile)
+      } catch (error) {
+        console.error("プロフィール更新エラー:", error)
+      }
     }
   }
 
@@ -56,7 +71,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, signOut }}>
+    <AuthContext.Provider value={{ user, userProfile, loading, signOut, refreshUserProfile }}>
       {children}
     </AuthContext.Provider>
   )

@@ -144,7 +144,7 @@ export default function PostTextbookPage() {
         title: formData.title,
         author: formData.author,
         description: formData.description,
-        price: 0, // テスト運用中は0円固定
+        price: parseFloat(formData.price) || 0,
         condition: formData.condition,
         meetupLocation: formData.meetupLocation,
         imageUrls: imageUrls,
@@ -178,7 +178,7 @@ export default function PostTextbookPage() {
             <CardTitle>教科書を出品</CardTitle>
             <CardDescription>
               以下のフォームに記入して、教科書を出品してください。<br />
-              <span className="text-orange-600 font-medium">※現在テスト運用中のため、価格は0円固定となります。</span>
+              <span className="text-blue-600 font-medium">※希望する価格を設定してください。</span>
             </CardDescription>
           </CardHeader>
 
@@ -266,8 +266,18 @@ export default function PostTextbookPage() {
                 <Textarea id="description" name="description" rows={4} value={formData.description} onChange={handleChange} required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="price">価格 (¥) - テスト運用中は0円固定</Label>
-                <Input id="price" name="price" type="number" value="0" disabled className="bg-gray-100" />
+                <Label htmlFor="price">価格 (¥)</Label>
+                <Input 
+                  id="price" 
+                  name="price" 
+                  type="number" 
+                  value={formData.price} 
+                  onChange={handleChange}
+                  placeholder="例: 1500"
+                  min="0"
+                  step="1"
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="genre">ジャンル</Label>
