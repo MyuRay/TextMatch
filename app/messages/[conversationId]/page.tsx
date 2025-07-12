@@ -495,7 +495,7 @@ export default function ConversationPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount: textbook.price * 100, // 円をセントに変換
+          amount: textbook.price, // JPYは円単位のため変換不要
           connectedAccountId: sellerProfile.stripeAccountId,
           textbookId: textbook.id,
           buyerId: user.uid,
