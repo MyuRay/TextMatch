@@ -24,6 +24,7 @@ import { Header } from "../components/header"
 import { Footer } from "../components/footer"
 import { OfficialIcon } from "../components/official-badge"
 import StripeConnectButton from "@/components/stripe-connect-button"
+import EarningsDashboard from "@/components/earnings-dashboard"
 
 export default function MyPage() {
   const [activeTab, setActiveTab] = useState("profile")
@@ -632,6 +633,16 @@ function ProfileCard({ user, userProfile }: { user: UserProfile, userProfile: Us
                 <p className="text-sm font-medium text-muted-foreground">登録日</p>
                 <p className="text-base">{user.createdAt?.toDate?.()?.toLocaleDateString() || "不明"}</p>
               </div>
+            </div>
+            
+            {/* 売上情報セクション - Stripe Connect設定済みユーザーのみ表示 */}
+            {userProfile?.stripeAccountId && (
+              <div className="mt-6">
+                <EarningsDashboard stripeAccountId={userProfile.stripeAccountId} />
+              </div>
+            )}
+            
+            <div className="mt-6">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">決済設定（Stripe Connect）</p>
                 <div className="flex items-center gap-2 mt-1">

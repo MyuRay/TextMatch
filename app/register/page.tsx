@@ -18,6 +18,7 @@ import { registerUser, sendVerificationEmail, updateUserProfile } from "@/lib/fi
 import { saveUserProfile } from "@/lib/firestore"
 import { uploadAvatar } from "@/lib/storage"
 import { isUniversityEmail, getEmailValidationError, suggestEmailDomain } from "@/lib/universityDomains"
+import StripeConnectButton from "@/components/stripe-connect-button"
 
 // 日本全国の大学リスト
 const UNIVERSITIES = [
@@ -311,11 +312,30 @@ export default function RegisterPage() {
                 <strong>{formData.email}</strong> でアカウントが作成されました。
               </p>
               <p className="text-sm text-muted-foreground">
-                すぐにログインしてuniTexをお楽しみください。
+                すぐにログインしてTextMatchをお楽しみください。
               </p>
               <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-4">
                 <p className="text-xs text-green-800">
                   ✅ メール認証は現在無効化されています
+                </p>
+              </div>
+
+              {/* Stripe Connect設定セクション */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+                <h3 className="font-semibold text-blue-900 mb-2">💰 収益化の準備</h3>
+                <p className="text-sm text-blue-800 mb-3">
+                  教科書販売で収益を得るために、Stripe Connectアカウントを設定しませんか？
+                </p>
+                <StripeConnectButton 
+                  variant="outline" 
+                  className="w-full mb-2"
+                  onConnected={() => {
+                    // 設定完了後はマイページに遷移
+                    router.push("/mypage?stripe_setup=success")
+                  }}
+                />
+                <p className="text-xs text-blue-600">
+                  後でマイページからも設定できます
                 </p>
               </div>
             </CardContent>
@@ -344,7 +364,7 @@ export default function RegisterPage() {
         <Card className="max-w-md mx-auto">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold text-center">アカウント登録</CardTitle>
-            <CardDescription className="text-center">Campus Booksに登録して教科書の売買を始めましょう</CardDescription>
+            <CardDescription className="text-center">TextMatchに登録して教科書の売買を始めましょう</CardDescription>
           </CardHeader>
 
           <form onSubmit={handleSubmit}>

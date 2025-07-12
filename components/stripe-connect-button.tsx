@@ -6,9 +6,11 @@ import { useAuth } from '@/lib/useAuth';
 
 interface StripeConnectButtonProps {
   onConnected?: (accountId: string) => void;
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  className?: string;
 }
 
-export default function StripeConnectButton({ onConnected }: StripeConnectButtonProps) {
+export default function StripeConnectButton({ onConnected, variant = "default", className }: StripeConnectButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
 
@@ -32,6 +34,10 @@ export default function StripeConnectButton({ onConnected }: StripeConnectButton
       
       if (response.ok) {
         localStorage.setItem('stripe_account_id', data.account_id);
+        // onConnectedコールバックを呼び出し
+        if (onConnected) {
+          onConnected(data.account_id);
+        }
         window.location.href = data.onboarding_url;
       } else {
         console.error('Failed to create Stripe account:', data.error);
@@ -47,7 +53,8 @@ export default function StripeConnectButton({ onConnected }: StripeConnectButton
     <Button 
       onClick={handleConnect} 
       disabled={isLoading || !user}
-      className="bg-blue-600 hover:bg-blue-700"
+      variant={variant}
+      className={className}
     >
       {isLoading ? '処理中...' : 'Stripe Connectで販売を開始'}
     </Button>
