@@ -21,9 +21,11 @@ import { doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import { Header } from "@/app/components/header"
 import { Footer } from "@/app/components/footer"
+import { useAuth } from "@/lib/useAuth"
 
 export default function PostTextbookPage() {
   const router = useRouter()
+  const { userProfile } = useAuth()
   const [formData, setFormData] = useState({
     isbn: "",
     title: "",
@@ -118,6 +120,13 @@ export default function PostTextbookPage() {
       const auth = getAuth()
       const user = auth.currentUser
       if (!user) throw new Error("ログインしていません")
+
+      // Stripe Connect設定チェック
+      if (!userProfile?.stripeAccountId) {
+        setIsLoading(false)
+        router.push("/stripe-setup?return_to=/post-textbook")
+        return
+      }
 
       const userDoc = await getDoc(doc(db, "users", user.uid))
       const university = userDoc.exists() ? userDoc.data().university : ""

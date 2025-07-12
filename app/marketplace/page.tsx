@@ -97,11 +97,6 @@ export default function MarketplacePage() {
                     <StripeConnectButton />
                   )} */}
                 </div>
-                <div className="mb-4 md:mb-6 p-3 md:p-4 bg-orange-50 border border-orange-200 rounded-lg max-w-2xl mx-auto">
-                  <p className="text-orange-800 font-medium text-sm md:text-base text-center">
-                    🧪 現在テスト運用中です！0円での教科書の取引にご協力をお願いします
-                  </p>
-                </div>
               </div>
               
               <div className="relative max-w-2xl mx-auto">

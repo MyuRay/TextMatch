@@ -28,8 +28,8 @@ export const sendEmailNotification = async (notification: EmailNotification): Pr
       console.log('📧 メール送信完了:', notification.to)
       return true
     } else {
-      // テスト運用中はコンソールログのみ
-      console.log('📧 メール通知送信（テスト運用中）:')
+      // 開発環境ではコンソールログのみ
+      console.log('📧 メール通知送信（開発環境）:')
       console.log('宛先:', notification.to)
       console.log('件名:', notification.subject)
       console.log('内容:', notification.textContent)
