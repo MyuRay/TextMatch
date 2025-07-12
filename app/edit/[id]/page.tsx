@@ -79,10 +79,18 @@ export default function EditBookPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // 価格のバリデーション
+    const price = parseFloat(formData.price)
+    if (price < 300) {
+      alert("価格は300円以上で設定してください。")
+      return
+    }
+    
     const docRef = doc(db, "books", bookId)
     await updateDoc(docRef, {
       ...formData,
-      price: parseFloat(formData.price) || 0,
+      price: price,
       imageUrl: imagePreview,
     })
     alert("教科書情報を更新しました！")
@@ -143,7 +151,7 @@ export default function EditBookPage() {
                   <Input id="author" name="author" value={formData.author} onChange={handleChange} required />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="price">価格（円）</Label>
+                  <Label htmlFor="price">価格（円）- 手数料込み</Label>
                   <Input 
                     id="price" 
                     name="price" 
@@ -151,10 +159,13 @@ export default function EditBookPage() {
                     value={formData.price} 
                     onChange={handleChange}
                     placeholder="例: 1500"
-                    min="0"
+                    min="300"
                     step="1"
                     required
                   />
+                  <p className="text-sm text-muted-foreground">
+                    手数料10%が含まれています。最低金額は300円です。
+                  </p>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="condition">状態</Label>

@@ -117,6 +117,14 @@ export default function PostTextbookPage() {
     setIsLoading(true)
 
     try {
+      // 価格のバリデーション
+      const price = parseFloat(formData.price)
+      if (price < 300) {
+        alert("価格は300円以上で設定してください")
+        setIsLoading(false)
+        return
+      }
+
       const auth = getAuth()
       const user = auth.currentUser
       if (!user) throw new Error("ログインしていません")
@@ -275,7 +283,7 @@ export default function PostTextbookPage() {
                 <Textarea id="description" name="description" rows={4} value={formData.description} onChange={handleChange} required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="price">価格 (¥)</Label>
+                <Label htmlFor="price">価格 (¥) 手数料込み</Label>
                 <Input 
                   id="price" 
                   name="price" 
@@ -283,10 +291,13 @@ export default function PostTextbookPage() {
                   value={formData.price} 
                   onChange={handleChange}
                   placeholder="例: 1500"
-                  min="0"
+                  min="300"
                   step="1"
                   required
                 />
+                <p className="text-xs text-muted-foreground">
+                  最低金額は300円です。取引手数料10%が含まれた価格を設定してください。
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="genre">ジャンル</Label>
