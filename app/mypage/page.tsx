@@ -23,7 +23,6 @@ import {
 import { Header } from "../components/header"
 import { Footer } from "../components/footer"
 import { OfficialIcon } from "../components/official-badge"
-import StripeConnectButton from "@/components/stripe-connect-button"
 import EarningsDashboard from "@/components/earnings-dashboard"
 
 export default function MyPage() {
@@ -62,9 +61,26 @@ export default function MyPage() {
         
         if (stripeAccountId) {
           try {
+            console.log('Stripeアカウントの設定完了状況を確認中...', stripeAccountId)
+            
+            // Stripeアカウントの実際の状態を確認
+            const accountResponse = await fetch(`/api/stripe/connect?account_id=${stripeAccountId}`)
+            const accountData = await accountResponse.json()
+            
+            console.log('Stripeアカウント状態:', accountData)
+            
+            // 設定が完了していない場合は保存しない
+            if (!accountData.details_submitted) {
+              console.warn('Stripeアカウントの設定が完了していません')
+              localStorage.removeItem('stripe_account_id')
+              alert('Stripe Connectの設定が完了していません。設定を完了してから再度お試しください。')
+              router.replace('/mypage')
+              return
+            }
+            
             console.log('Firestoreにアカウント情報を保存中...', stripeAccountId)
             
-            // Firestoreのユーザー情報を更新
+            // 設定完了済みの場合のみFirestoreのユーザー情報を更新
             await setDoc(doc(db, "users", user.uid), {
               stripeAccountId: stripeAccountId,
             }, { merge: true })
@@ -421,6 +437,7 @@ function TabButton({ label, icon, active, onClick, mobile = false }: {
 }
 
 function ProfileCard({ user, userProfile }: { user: UserProfile, userProfile: UserProfile | null }) {
+  const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [editData, setEditData] = useState({
     fullName: user.fullName,
@@ -657,12 +674,12 @@ function ProfileCard({ user, userProfile }: { user: UserProfile, userProfile: Us
                       <p className="text-xs text-muted-foreground">
                         教科書を販売して決済を受け取るには、Stripe Connectの設定が必要です
                       </p>
-                      <StripeConnectButton 
-                        onConnected={(accountId) => {
-                          // アカウント連携完了後の処理
-                          window.location.reload()
-                        }}
-                      />
+                      <Button 
+                        onClick={() => router.push("/stripe-setup?return_to=/mypage")}
+                        className="w-full"
+                      >
+                        Stripe Connectで販売を開始
+                      </Button>
                     </div>
                   )}
                 </div>

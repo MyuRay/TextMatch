@@ -18,7 +18,6 @@ import { registerUser, sendVerificationEmail, updateUserProfile } from "@/lib/fi
 import { saveUserProfile } from "@/lib/firestore"
 import { uploadAvatar } from "@/lib/storage"
 import { isUniversityEmail, getEmailValidationError, suggestEmailDomain } from "@/lib/universityDomains"
-import StripeConnectButton from "@/components/stripe-connect-button"
 
 // 日本全国の大学リスト
 const UNIVERSITIES = [
@@ -320,34 +319,23 @@ export default function RegisterPage() {
                 </p>
               </div>
 
-              {/* Stripe Connect設定セクション */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
-                <h3 className="font-semibold text-blue-900 mb-2">💰 収益化の準備</h3>
-                <p className="text-sm text-blue-800 mb-3">
-                  教科書販売で収益を得るために、Stripe Connectアカウントを設定しませんか？
-                </p>
-                <StripeConnectButton 
-                  variant="outline" 
-                  className="w-full mb-2"
-                  onConnected={() => {
-                    // 設定完了後はマイページに遷移
-                    router.push("/mypage?stripe_setup=success")
-                  }}
-                />
-                <p className="text-xs text-blue-600">
-                  後でマイページからも設定できます
-                </p>
-              </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-2">
               <Button 
-                onClick={() => router.push("/login")} 
+                onClick={() => router.push("/stripe-setup?return_to=/login")} 
                 className="w-full"
               >
-                ログインページへ
+                次へ：収益化設定
+              </Button>
+              <Button 
+                onClick={() => router.push("/login")} 
+                variant="outline"
+                className="w-full"
+              >
+                スキップしてログインページへ
               </Button>
               <p className="text-xs text-center text-muted-foreground">
-                認証完了後、ログインできるようになります
+                収益化設定は後からマイページでも行えます
               </p>
             </CardFooter>
           </Card>

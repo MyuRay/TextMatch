@@ -33,11 +33,9 @@ export default function StripeConnectButton({ onConnected, variant = "default", 
       const data = await response.json();
       
       if (response.ok) {
+        // アカウントIDはlocalStorageにのみ一時保存（Firestoreには保存しない）
         localStorage.setItem('stripe_account_id', data.account_id);
-        // onConnectedコールバックを呼び出し
-        if (onConnected) {
-          onConnected(data.account_id);
-        }
+        // Stripeオンボーディングページにリダイレクト
         window.location.href = data.onboarding_url;
       } else {
         console.error('Failed to create Stripe account:', data.error);
