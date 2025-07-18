@@ -49,27 +49,46 @@ function CheckoutForm({ amount, textbookTitle, onSuccess }: Omit<PaymentFormProp
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>決済情報</CardTitle>
-        <p className="text-sm text-gray-600">
-          {textbookTitle} - ¥{amount.toLocaleString()}
-        </p>
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-lg">決済情報</CardTitle>
+        <div className="text-sm text-gray-600">
+          <p className="line-clamp-2 break-words mb-1">
+            {textbookTitle}
+          </p>
+          <p className="font-medium text-lg text-gray-900">
+            ¥{amount.toLocaleString()}
+          </p>
+        </div>
       </CardHeader>
-      <CardContent>
-        <div className="text-amber-600 text-sm mb-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
-          <p className="font-medium">⚠️ ご注意：JCBカードはご利用いただけません</p>
+      <CardContent className="space-y-4">
+        <div className="text-amber-600 text-sm p-3 bg-amber-50 rounded-lg border border-amber-200">
+          <p className="font-medium text-xs sm:text-sm">⚠️ ご注意：JCBカードはご利用いただけません</p>
           <p className="text-xs mt-1">VISA、Mastercard、American Expressのみ対応しております</p>
         </div>
-        <form onSubmit={handleSubmit}>
-          <PaymentElement className="mb-4" />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="min-h-[120px]">
+            <PaymentElement 
+              className="w-full" 
+              options={{
+                layout: {
+                  type: 'accordion',
+                  defaultCollapsed: false,
+                  radios: false,
+                  spacedAccordionItems: false
+                }
+              }}
+            />
+          </div>
           {message && (
-            <div className="text-red-600 text-sm mb-4">{message}</div>
+            <div className="text-red-600 text-sm p-3 bg-red-50 rounded-lg border border-red-200 break-words">
+              {message}
+            </div>
           )}
           <Button 
             type="submit" 
             disabled={!stripe || isLoading}
-            className="w-full"
+            className="w-full h-12 text-sm sm:text-base"
           >
             {isLoading ? '処理中...' : `¥${amount.toLocaleString()}で購入`}
           </Button>
@@ -82,14 +101,14 @@ function CheckoutForm({ amount, textbookTitle, onSuccess }: Omit<PaymentFormProp
 export default function StripePaymentForm({ clientSecret, amount, textbookTitle, onSuccess }: PaymentFormProps) {
   if (!stripePromise) {
     return (
-      <Card className="w-full max-w-md">
-        <CardContent className="p-6 text-center">
-          <h3 className="font-semibold text-red-600 mb-2">決済システムエラー</h3>
-          <p className="text-sm text-gray-600 mb-4">
+      <Card className="w-full max-w-md mx-auto">
+        <CardContent className="p-4 sm:p-6 text-center">
+          <h3 className="font-semibold text-red-600 mb-2 text-sm sm:text-base">決済システムエラー</h3>
+          <p className="text-xs sm:text-sm text-gray-600 mb-4 break-words">
             Stripeの設定が完了していません。<br />
             管理者にお問い合わせください。
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 break-words">
             環境変数: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY が設定されていません
           </p>
         </CardContent>
@@ -101,6 +120,12 @@ export default function StripePaymentForm({ clientSecret, amount, textbookTitle,
     clientSecret,
     appearance: {
       theme: 'stripe' as const,
+      variables: {
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontSizeBase: '14px',
+        spacingUnit: '4px',
+        borderRadius: '8px',
+      },
     },
   };
 

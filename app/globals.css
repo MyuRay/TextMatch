@@ -32,6 +32,20 @@ body {
   .touch-manipulation {
     touch-action: manipulation;
   }
+
+  /* 横スクロールアニメーション */
+  .animate-scroll-x {
+    animation: scroll-x 8s linear infinite;
+  }
+
+  @keyframes scroll-x {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
 }
 
 @layer base {

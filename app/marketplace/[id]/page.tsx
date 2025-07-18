@@ -26,6 +26,8 @@ export default function TextbookDetailPage() {
   const [favoriteLoading, setFavoriteLoading] = useState(false)
   const [sellerName, setSellerName] = useState("")
   const [sellerProfile, setSellerProfile] = useState<{name: string, avatarUrl?: string, isOfficial?: boolean, officialType?: string} | null>(null)
+  const [otherBooks, setOtherBooks] = useState<Textbook[]>([])
+  const [otherBooksLoading, setOtherBooksLoading] = useState(false)
 
   const conditionMap: Record<string, string> = {
     new: "新品",
@@ -74,10 +76,51 @@ export default function TextbookDetailPage() {
         }
       }
 
+      // 出品者の他の投稿を取得
+      if (book.userId) {
+        await fetchOtherBooks(book.userId, book.id)
+      }
+
       setLoading(false)
     }
     fetchData()
   }, [params.id, router, user])
+
+  const fetchOtherBooks = async (sellerId: string, currentBookId: string) => {
+    setOtherBooksLoading(true)
+    try {
+      const { collection, query, where, getDocs, limit } = await import("firebase/firestore")
+      const { db } = await import("@/lib/firebaseConfig")
+      
+      // 同じ出品者の他の投稿を取得（orderByを削除してインデックス不要に）
+      const q = query(
+        collection(db, "books"),
+        where("userId", "==", sellerId),
+        limit(10) // 多めに取得してフィルタリング
+      )
+      
+      const snapshot = await getDocs(q)
+      const books = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Textbook))
+        .filter(book => 
+          book.id !== currentBookId && // 現在の投稿を除外
+          (book.status === 'available' || book.status === undefined || book.status === null) // 販売中のみ
+        )
+        .sort((a, b) => {
+          // クライアント側でソート（新しい順）
+          const aTime = a.createdAt?.seconds || 0
+          const bTime = b.createdAt?.seconds || 0
+          return bTime - aTime
+        })
+        .slice(0, 4) // 最大4件に制限
+      
+      setOtherBooks(books)
+    } catch (error) {
+      console.error("他の投稿取得エラー:", error)
+    } finally {
+      setOtherBooksLoading(false)
+    }
+  }
 
   const handleFavoriteToggle = async () => {
     if (!user || !textbook) return
@@ -359,6 +402,128 @@ export default function TextbookDetailPage() {
           </div>
         </div>
       </main>
+
+      {/* 同じ出品者の他の投稿 */}
+      {otherBooks.length > 0 && (
+        <section className="container mx-auto py-8 px-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold">同じ出品者の他の投稿</h2>
+                {sellerProfile && (
+                  <Link href={`/seller/${textbook?.userId}`} className="text-primary hover:underline text-sm">
+                    {sellerProfile.name}さんの出品一覧を見る →
+                  </Link>
+                )}
+              </div>
+            </div>
+            
+            {otherBooksLoading ? (
+              <div className="flex gap-4 overflow-x-auto md:grid md:grid-cols-4 pb-4">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="bg-gray-200 animate-pulse rounded-lg aspect-[4/3] flex-shrink-0 w-[180px] md:w-auto"></div>
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-hidden md:overflow-visible">
+                <div className="flex gap-4 md:grid md:grid-cols-4 pb-4 animate-scroll-x md:animate-none">
+                  {/* 元のコンテンツ */}
+                  {otherBooks.map((book) => (
+                    <Link key={book.id} href={`/marketplace/${book.id}`} className="block flex-shrink-0 w-[180px] md:w-auto">
+                      <div className="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                        <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted flex items-center justify-center">
+                          <img
+                            src={(book.imageUrls && book.imageUrls[0]) || book.imageUrl || "/placeholder.svg"}
+                            alt={book.title}
+                            className="w-full h-full object-contain"
+                          />
+                          {/* 複数画像インジケータ */}
+                          {book.imageUrls && book.imageUrls.length > 1 && (
+                            <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                              +{book.imageUrls.length - 1}
+                            </div>
+                          )}
+                          {/* 閲覧数 */}
+                          <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                            <span>👁</span>
+                            {book.views || 0}
+                          </div>
+                          {/* 取引状態バッジ */}
+                          {book.status === 'sold' && (
+                            <div className="absolute top-2 right-2">
+                              <span className="bg-red-500 text-white text-xs px-2 py-1 rounded">
+                                売切
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-3">
+                          <h3 className="font-semibold text-sm line-clamp-2 mb-2">{book.title}</h3>
+                          <div className="flex items-center justify-between">
+                            <p className="font-medium text-primary">
+                              ¥{book.price?.toLocaleString()}
+                            </p>
+                            <span className="text-xs text-gray-500">
+                              {conditionMap[book.condition] || book.condition}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                  {/* 複製されたコンテンツ（無限スクロール用） */}
+                  <div className="flex gap-4 md:hidden">
+                    {otherBooks.map((book) => (
+                      <Link key={`duplicate-${book.id}`} href={`/marketplace/${book.id}`} className="block flex-shrink-0 w-[180px]">
+                        <div className="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                          <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted flex items-center justify-center">
+                            <img
+                              src={(book.imageUrls && book.imageUrls[0]) || book.imageUrl || "/placeholder.svg"}
+                              alt={book.title}
+                              className="w-full h-full object-contain"
+                            />
+                            {/* 複数画像インジケータ */}
+                            {book.imageUrls && book.imageUrls.length > 1 && (
+                              <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                                +{book.imageUrls.length - 1}
+                              </div>
+                            )}
+                            {/* 閲覧数 */}
+                            <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                              <span>👁</span>
+                              {book.views || 0}
+                            </div>
+                            {/* 取引状態バッジ */}
+                            {book.status === 'sold' && (
+                              <div className="absolute top-2 right-2">
+                                <span className="bg-red-500 text-white text-xs px-2 py-1 rounded">
+                                  売切
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-3">
+                            <h3 className="font-semibold text-sm line-clamp-2 mb-2">{book.title}</h3>
+                            <div className="flex items-center justify-between">
+                              <p className="font-medium text-primary">
+                                ¥{book.price?.toLocaleString()}
+                              </p>
+                              <span className="text-xs text-gray-500">
+                                {conditionMap[book.condition] || book.condition}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+      
       <Footer />
     </div>
   )

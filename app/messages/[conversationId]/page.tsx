@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { db } from "@/lib/firebaseConfig"
 import {
@@ -48,6 +48,8 @@ export default function ConversationPage() {
   const [paymentLoading, setPaymentLoading] = useState(false)
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let unsubscribe: (() => void) | null = null
@@ -141,6 +143,16 @@ export default function ConversationPage() {
     }
   }
 
+  // メッセージを一番下にスクロールする関数
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  // メッセージが更新されたときに自動スクロール
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
   const handleSend = async () => {
     if (!newMessage.trim() || !user) return
 
@@ -190,6 +202,11 @@ export default function ConversationPage() {
       
       console.log("🏁 全ての通知処理完了")
       setNewMessage("")
+      
+      // メッセージ送信後、少し遅れてスクロール
+      setTimeout(() => {
+        scrollToBottom()
+      }, 100)
     } catch (error) {
       console.error("❌ メッセージ送信エラー:", error)
       alert("メッセージの送信に失敗しました")
@@ -413,21 +430,17 @@ export default function ConversationPage() {
     if (!isConfirmed) return
 
     try {
-      // 教科書のステータスをsoldに更新し、取引状態をselectedに設定
-      const textbookRef = doc(db, "books", textbook.id)
-      await updateDoc(textbookRef, {
-        status: 'sold',
-        buyerId: conversation.buyerId,
-        transactionStatus: 'in_progress', // 購入者選択済み（決済待ち）
-        soldAt: serverTimestamp(),
+      // 会話レベルでの取引状態を更新（教科書自体の状態は変更しない）
+      const conversationRef = doc(db, "conversations", conversationId as string)
+      await updateDoc(conversationRef, {
+        transactionStatus: 'selected', // この会話で取引相手が選択された
+        selectedAt: serverTimestamp(),
       })
       
-      // 教科書の状態を更新
-      setTextbook((prev: any) => prev ? { 
+      // 会話の状態を更新
+      setConversation((prev: any) => prev ? { 
         ...prev, 
-        status: 'sold', 
-        buyerId: conversation.buyerId,
-        transactionStatus: 'in_progress'
+        transactionStatus: 'selected'
       } : null)
       
       // 成約完了メッセージを自動送信
@@ -525,12 +538,25 @@ export default function ConversationPage() {
     setPaymentDialogOpen(false)
     
     try {
-      // 教科書の取引状態をpaidに更新
+      // 会話の取引状態をpaidに更新
+      const conversationRef = doc(db, "conversations", conversationId as string)
+      await updateDoc(conversationRef, {
+        transactionStatus: 'paid', // 決済完了
+        paidAt: serverTimestamp(),
+      })
+      
+      // 教科書の取引状態もpaidに更新
       const textbookRef = doc(db, "books", textbook.id)
       await updateDoc(textbookRef, {
         transactionStatus: 'paid', // 決済完了
         paidAt: serverTimestamp(),
       })
+      
+      // 会話の状態を更新
+      setConversation((prev: any) => prev ? { 
+        ...prev, 
+        transactionStatus: 'paid'
+      } : null)
       
       // 教科書の状態を更新
       setTextbook((prev: any) => prev ? { 
@@ -571,15 +597,32 @@ export default function ConversationPage() {
     if (!isConfirmed) return
 
     try {
-      // 教科書の取引状態をcompletedに更新
+      // 教科書の状態をsoldに更新し、取引完了状態に設定
       const textbookRef = doc(db, "books", textbook.id)
       await updateDoc(textbookRef, {
+        status: 'sold',
+        buyerId: conversation.buyerId,
+        transactionStatus: 'completed',
+        completedAt: serverTimestamp(),
+      })
+      
+      // 会話の取引状態も更新
+      const conversationRef = doc(db, "conversations", conversationId as string)
+      await updateDoc(conversationRef, {
         transactionStatus: 'completed',
         completedAt: serverTimestamp(),
       })
       
       // 教科書の状態を更新
       setTextbook((prev: any) => prev ? { 
+        ...prev, 
+        status: 'sold',
+        buyerId: conversation.buyerId,
+        transactionStatus: 'completed'
+      } : null)
+      
+      // 会話の状態を更新
+      setConversation((prev: any) => prev ? { 
         ...prev, 
         transactionStatus: 'completed'
       } : null)
@@ -636,32 +679,32 @@ export default function ConversationPage() {
               </Link>
             </Button>
             
-            <div className="flex items-center gap-3 flex-1">
-              <Avatar className="h-10 w-10">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <Avatar className="h-10 w-10 flex-shrink-0">
                 <AvatarImage src={otherUser?.avatarUrl || "/placeholder.svg"} />
                 <AvatarFallback className="bg-primary/10 text-primary">
                   {otherUser?.name?.charAt(0) || "U"}
                 </AvatarFallback>
               </Avatar>
               
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h1 className="font-semibold text-lg">{otherUser?.name || "不明なユーザー"}</h1>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h1 className="font-semibold text-lg truncate">{otherUser?.name || "不明なユーザー"}</h1>
                   <OfficialIcon 
                     isOfficial={otherUser?.isOfficial} 
                     officialType={otherUser?.officialType as 'admin' | 'support' | 'team'} 
                   />
                 </div>
                 {textbook && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <BookOpen className="h-3 w-3" />
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+                    <BookOpen className="h-3 w-3 flex-shrink-0" />
                     <span className="truncate">{textbook.title}</span>
                   </div>
                 )}
               </div>
               
               {conversation && (
-                <Badge variant={conversation.buyerId === user?.uid ? 'default' : 'secondary'}>
+                <Badge variant={conversation.buyerId === user?.uid ? 'default' : 'secondary'} className="flex-shrink-0">
                   {conversation.buyerId === user?.uid ? '購入希望' : '出品者'}
                 </Badge>
               )}
@@ -685,9 +728,13 @@ export default function ConversationPage() {
                   />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-sm truncate">{textbook.title}</h3>
-                  <p className="text-xs text-muted-foreground">{textbook.author}</p>
-                  <p className="text-xs text-muted-foreground">{textbook.university}</p>
+                  <h3 className="font-semibold text-sm line-clamp-2 break-words">{textbook.title}</h3>
+                  {textbook.author && (
+                    <p className="text-xs text-muted-foreground truncate">{textbook.author}</p>
+                  )}
+                  {textbook.university && (
+                    <p className="text-xs text-muted-foreground truncate">{textbook.university}</p>
+                  )}
                   <div className="flex items-center gap-2 mt-1">
                     <p className="text-sm font-bold text-primary">¥{textbook.price?.toLocaleString()}</p>
                     <Badge variant={textbook.status === 'sold' ? 'destructive' : 'secondary'} className="text-xs">
@@ -708,20 +755,90 @@ export default function ConversationPage() {
               <CardContent className="p-3">
                 <div className="space-y-2">
                   <h4 className="font-medium text-blue-900 text-sm">📋 出品者メニュー</h4>
-                  {textbook?.status === 'sold' ? (
+                  {conversation.transactionStatus === 'selected' || conversation.transactionStatus === 'paid' || conversation.transactionStatus === 'completed' ? (
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <p className="text-xs text-green-800 font-medium">✅ {otherUser?.name}さんとの取引成立済み</p>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-green-300 text-green-700 hover:bg-green-50 text-xs px-2 py-1 h-7"
-                        onClick={() => handleStatusChange('available')}
-                      >
-                        <RotateCcw className="mr-1 h-3 w-3" />
-                        出品中に戻す
-                      </Button>
+                      {conversation.transactionStatus === 'completed' ? (
+                        <div className="text-center">
+                          <p className="text-xs text-gray-600 mb-1">✅ 取引完了</p>
+                          <p className="text-xs text-gray-500">この取引は完了しました</p>
+                        </div>
+                      ) : conversation.transactionStatus === 'paid' ? (
+                        <div className="text-center">
+                          <p className="text-xs text-blue-800 mb-1">📦 受取待ち</p>
+                          <p className="text-xs text-blue-600">購入者が受取完了を行うまでお待ちください</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <p className="text-xs text-blue-800 mb-1">💳 決済待ち</p>
+                          <p className="text-xs text-blue-600 mb-2">購入者が決済を行うまでお待ちください</p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-orange-300 text-orange-700 hover:bg-orange-50 text-xs px-2 py-1 h-7 w-full"
+                            onClick={async () => {
+                              if (window.confirm('取引をキャンセルして出品中に戻しますか？')) {
+                                try {
+                                  // 会話の取引状態をリセット
+                                  const conversationRef = doc(db, "conversations", conversationId as string)
+                                  await updateDoc(conversationRef, {
+                                    transactionStatus: null,
+                                    selectedAt: null,
+                                  })
+                                  
+                                  // 会話の状態を更新
+                                  setConversation((prev: any) => prev ? { 
+                                    ...prev, 
+                                    transactionStatus: null
+                                  } : null)
+                                  
+                                  // キャンセルメッセージを自動送信
+                                  const messagesRef = collection(db, "conversations", conversationId as string, "messages")
+                                  await addDoc(messagesRef, {
+                                    text: `📢 システム通知: 出品者が取引をキャンセルしました。商品は再び出品中の状態に戻りました。`,
+                                    senderId: "system",
+                                    createdAt: serverTimestamp(),
+                                    isRead: false,
+                                    isSystemMessage: true
+                                  })
+                                  
+                                  alert('出品中に戻しました')
+                                } catch (error) {
+                                  console.error('取引キャンセルエラー:', error)
+                                  alert('取引のキャンセルに失敗しました')
+                                }
+                              }
+                            }}
+                          >
+                            <RotateCcw className="mr-1 h-3 w-3" />
+                            出品中に戻す
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ) : textbook?.status === 'sold' && textbook?.buyerId !== conversation.buyerId ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-orange-800 font-medium">⚠️ 他の人と取引成立済み</p>
+                      </div>
+                      <p className="text-xs text-orange-600">この商品は他の人との取引が成立しています</p>
+                    </div>
+                  ) : textbook?.status === 'sold' && textbook?.buyerId === conversation.buyerId ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        {textbook?.transactionStatus === 'completed' ? (
+                          <p className="text-xs text-green-800 font-medium">✅ {otherUser?.name}さんとの取引完了済み</p>
+                        ) : (
+                          <p className="text-xs text-blue-800 font-medium">📦 {otherUser?.name}さんとの取引進行中</p>
+                        )}
+                      </div>
+                      {textbook?.transactionStatus === 'completed' ? (
+                        <p className="text-xs text-green-600">この取引は正常に完了しました</p>
+                      ) : (
+                        <p className="text-xs text-blue-600">受取完了をお待ちください</p>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -754,7 +871,7 @@ export default function ConversationPage() {
 
 
           {/* 購入者向け販売許可待ち表示 */}
-          {conversation && user && user.uid === conversation.buyerId && textbook?.status === 'available' && (
+          {conversation && user && user.uid === conversation.buyerId && textbook?.status === 'available' && !conversation.transactionStatus && (
             <Card className="bg-blue-50 border-blue-200 mt-2">
               <CardContent className="p-3">
                 <div className="space-y-2">
@@ -776,18 +893,32 @@ export default function ConversationPage() {
             </Card>
           )}
 
+          {/* デバッグ情報表示 */}
+          {conversation && user && user.uid === conversation.buyerId && (
+            <Card className="bg-gray-50 border-gray-200 mt-2">
+              <CardContent className="p-2">
+                <div className="text-xs text-gray-600">
+                  <p>🔍 デバッグ情報:</p>
+                  <p>conversation.transactionStatus: {conversation.transactionStatus || 'undefined'}</p>
+                  <p>textbook.status: {textbook?.status || 'undefined'}</p>
+                  <p>textbook.transactionStatus: {textbook?.transactionStatus || 'undefined'}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* 購入者向け決済・受取表示 */}
-          {conversation && user && user.uid === conversation.buyerId && textbook?.status === 'sold' && textbook?.buyerId === user.uid && (
+          {conversation && user && user.uid === conversation.buyerId && (conversation.transactionStatus === 'selected' || conversation.transactionStatus === 'paid' || conversation.transactionStatus === 'completed') && (
             <Card className="bg-green-50 border-green-200 mt-2">
               <CardContent className="p-3">
-                {textbook?.transactionStatus === 'completed' ? (
+                {conversation.transactionStatus === 'completed' ? (
                   <div className="text-center">
                     <h4 className="font-medium text-green-900 text-sm mb-1">✅ 取引完了</h4>
                     <p className="text-xs text-green-800">
                       取引が完了しました。ありがとうございました！
                     </p>
                   </div>
-                ) : textbook?.transactionStatus === 'paid' ? (
+                ) : conversation.transactionStatus === 'paid' ? (
                   <div className="space-y-2">
                     <h4 className="font-medium text-green-900 text-sm">💳 決済完了</h4>
                     <p className="text-xs text-green-800 mb-2">
@@ -802,11 +933,11 @@ export default function ConversationPage() {
                       📦 受け取った
                     </Button>
                   </div>
-                ) : textbook?.transactionStatus === 'in_progress' ? (
+                ) : (
                   <div className="space-y-2">
                     <h4 className="font-medium text-green-900 text-sm">🎉 取引成立！</h4>
                     <p className="text-xs text-green-800 mb-2">
-                      あなたが選ばれました。決済を行ってください。
+                      あなたとの取引が成立しました。決済を行ってください。
                     </p>
                     <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
                       <DialogTrigger asChild>
@@ -838,21 +969,6 @@ export default function ConversationPage() {
                       </DialogContent>
                     </Dialog>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-green-900 text-sm">🎉 取引成立！</h4>
-                    <p className="text-xs text-green-800 mb-2">
-                      あなたとの取引が成立しました。商品を受け取ったら下のボタンを押してください。
-                    </p>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 h-7 w-full"
-                      onClick={handleReceiveComplete}
-                    >
-                      📦 受け取った
-                    </Button>
-                  </div>
                 )}
               </CardContent>
             </Card>
@@ -861,7 +977,7 @@ export default function ConversationPage() {
       )}
 
       {/* メッセージエリア */}
-      <main className="flex-1 container mx-auto px-4 py-2 overflow-y-auto min-h-0">
+      <main ref={messagesContainerRef} className="flex-1 container mx-auto px-4 py-2 overflow-y-auto min-h-0">
         <div className="space-y-3 max-w-3xl mx-auto">
           {messages.length === 0 ? (
             <div className="text-center py-8">
@@ -969,6 +1085,8 @@ export default function ConversationPage() {
               )
             })
           )}
+          {/* スクロール用の空のdiv */}
+          <div ref={messagesEndRef} />
         </div>
       </main>
 

@@ -360,13 +360,15 @@ export default function MessagesPage() {
 
                           {/* 最新メッセージ */}
                           {conversation.latestMessage && (
-                            <div className="text-sm text-muted-foreground">
-                              <span className="font-medium">
-                                {conversation.latestMessage.senderId === user?.uid ? 'あなた' : conversation.otherUser?.name}:
-                              </span>
-                              <span className="ml-1 truncate">
-                                {conversation.latestMessage.text}
-                              </span>
+                            <div className="text-sm text-muted-foreground overflow-hidden">
+                              <div className="truncate">
+                                <span className="font-medium">
+                                  {conversation.latestMessage.senderId === user?.uid ? 'あなた' : conversation.otherUser?.name}:
+                                </span>
+                                <span className="ml-1">
+                                  {conversation.latestMessage.text}
+                                </span>
+                              </div>
                             </div>
                           )}
                         </div>
