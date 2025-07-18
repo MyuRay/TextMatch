@@ -409,7 +409,7 @@ export default function TextbookDetailPage() {
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center gap-3 mb-6">
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold">同じ出品者の他の投稿</h2>
+                <h2 className="text-lg font-bold">同じ出品者の他の投稿</h2>
                 {sellerProfile && (
                   <Link href={`/seller/${textbook?.userId}`} className="text-primary hover:underline text-sm">
                     {sellerProfile.name}さんの出品一覧を見る →
