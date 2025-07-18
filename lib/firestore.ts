@@ -38,6 +38,7 @@ export interface Textbook {
   genre?: string
   transactionStatus?: 'pending' | 'paid' | 'completed'
   completedAt?: Timestamp
+  hasWriting?: boolean // 書き込みありかどうか
 }
 
 export interface UserProfile {

@@ -27,6 +27,7 @@ export default function MarketplacePage() {
   const [sameUniversityOnly, setSameUniversityOnly] = useState(false)
   const [genreFilter, setGenreFilter] = useState("all")
   const [conditionFilter, setConditionFilter] = useState("all")
+  const [writingFilter, setWritingFilter] = useState("all")
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [allTextbooks, setAllTextbooks] = useState<Textbook[]>([])
   const [filteredTextbooks, setFilteredTextbooks] = useState<Textbook[]>([])
@@ -68,6 +69,14 @@ export default function MarketplacePage() {
       filtered = filtered.filter(book => book.condition === conditionFilter)
     }
 
+    if (writingFilter !== "all") {
+      if (writingFilter === "has_writing") {
+        filtered = filtered.filter(book => book.hasWriting === true)
+      } else if (writingFilter === "no_writing") {
+        filtered = filtered.filter(book => book.hasWriting !== true)
+      }
+    }
+
     filtered.sort((a, b) => {
       switch (sortBy) {
         case "price-low":
@@ -81,7 +90,7 @@ export default function MarketplacePage() {
     })
 
     setFilteredTextbooks(filtered)
-  }, [searchQuery, allTextbooks, sortBy, showSold, sameUniversityOnly, genreFilter, conditionFilter, userProfile])
+  }, [searchQuery, allTextbooks, sortBy, showSold, sameUniversityOnly, genreFilter, conditionFilter, writingFilter, userProfile])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -129,7 +138,7 @@ export default function MarketplacePage() {
               
               {isFilterOpen && (
                 <div className="p-3 md:p-4 pt-0">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
                     <div>
                       <label className="text-sm font-medium mb-2 block">ジャンル</label>
                       <Select value={genreFilter} onValueChange={setGenreFilter}>
@@ -158,6 +167,20 @@ export default function MarketplacePage() {
                           <SelectItem value="good">良好</SelectItem>
                           <SelectItem value="fair">やや傷あり</SelectItem>
                           <SelectItem value="poor">傷あり</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">書き込み</label>
+                      <Select value={writingFilter} onValueChange={setWritingFilter}>
+                        <SelectTrigger className="h-8 md:h-10">
+                          <SelectValue placeholder="書き込み状態を選択" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">すべて</SelectItem>
+                          <SelectItem value="no_writing">書き込みなし</SelectItem>
+                          <SelectItem value="has_writing">書き込みあり</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -226,7 +249,7 @@ export default function MarketplacePage() {
             {filteredTextbooks.length === 0 ? (
               <div className="text-center py-8 md:py-12">
                 <p className="text-muted-foreground mb-4 text-sm md:text-base">
-                  {searchQuery || genreFilter !== "all" || conditionFilter !== "all" || sameUniversityOnly || !showSold
+                  {searchQuery || genreFilter !== "all" || conditionFilter !== "all" || writingFilter !== "all" || sameUniversityOnly || !showSold
                     ? "検索条件に一致する教科書が見つかりませんでした"
                     : "まだ教科書が投稿されていません"}
                 </p>
