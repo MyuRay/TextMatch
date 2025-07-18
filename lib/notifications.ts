@@ -255,3 +255,21 @@ export async function createReceiptNotification(
     `/messages/${conversationId}`
   )
 }
+
+/**
+ * 教科書再出品通知を作成する
+ */
+export async function createTextbookAvailableNotification(
+  recipientId: string,
+  bookTitle: string,
+  bookId: string
+): Promise<void> {
+  await createNotification(
+    recipientId,
+    'system',
+    "教科書が再出品されました",
+    `「${bookTitle}」が再び購入可能になりました。`,
+    bookId,
+    `/marketplace/${bookId}`
+  )
+}

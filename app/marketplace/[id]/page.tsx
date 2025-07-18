@@ -12,7 +12,7 @@ import { Header } from "@/app/components/header"
 import { Footer } from "@/app/components/footer"
 import { OfficialIcon } from "@/app/components/official-badge"
 import { ImageGallery } from "@/app/components/image-gallery"
-import { getTextbookById, getUserNickname, getUserProfile, createOrGetConversation, Textbook, isFavorite, addToFavorites, removeFromFavorites, updateTextbookStatus } from "@/lib/firestore"
+import { getTextbookById, getUserNickname, getUserProfile, createOrGetConversation, Textbook, isFavorite, addToFavorites, removeFromFavorites, updateTextbookStatus, incrementTextbookViews } from "@/lib/firestore"
 import { formatDate } from "@/lib/utils"
 import { useAuth } from "@/lib/useAuth"
 
@@ -44,6 +44,13 @@ export default function TextbookDetailPage() {
         return
       }
       setTextbook(book)
+
+      // 閲覧数を更新（自分の投稿は除外）
+      if (user) {
+        await incrementTextbookViews(id, user.uid)
+      } else {
+        await incrementTextbookViews(id)
+      }
 
       if (book.userId) {
         try {
@@ -210,14 +217,18 @@ export default function TextbookDetailPage() {
                   <User className="h-5 w-5 mr-2 text-muted-foreground shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium">出品者</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-muted-foreground">{sellerName || "不明"}</p>
-                      <OfficialIcon 
-                        isOfficial={sellerProfile?.isOfficial} 
-                        officialType={sellerProfile?.officialType as 'admin' | 'support' | 'team'} 
-                        className="scale-75"
-                      />
-                    </div>
+                    <Link href={`/seller/${textbook.userId}`} className="group">
+                      <div className="flex items-center gap-2 hover:bg-gray-50 p-1 rounded transition-colors">
+                        <p className="text-muted-foreground group-hover:text-primary transition-colors">
+                          {sellerName || "不明"}
+                        </p>
+                        <OfficialIcon 
+                          isOfficial={sellerProfile?.isOfficial} 
+                          officialType={sellerProfile?.officialType as 'admin' | 'support' | 'team'} 
+                          className="scale-75"
+                        />
+                      </div>
+                    </Link>
                     {textbook.university && (
                       <p className="text-xs text-muted-foreground">{textbook.university}</p>
                     )}
@@ -245,6 +256,7 @@ export default function TextbookDetailPage() {
                     <div className="w-full p-4 bg-green-50 border border-green-200 rounded-lg text-center">
                       <Badge variant="secondary" className="mb-2 bg-green-100 text-green-800">購入可能</Badge>
                       <p className="text-sm text-muted-foreground">出品者に連絡して取引を開始しましょう</p>
+                      <p className="text-xs text-muted-foreground mt-2">※ 出品者との相談後、販売許可が出た場合に購入ボタンが表示されます</p>
                     </div>
                   )}
                 </>
@@ -256,14 +268,25 @@ export default function TextbookDetailPage() {
                   <p className="text-sm font-medium text-blue-800 mb-3">出品者メニュー</p>
                   <div className="flex flex-col sm:flex-row gap-2">
                     {textbook?.status === 'sold' ? (
-                      <Button
-                        variant="outline"
-                        className="flex-1 border-green-200 text-green-700 hover:bg-green-50"
-                        onClick={() => handleStatusChange('available')}
-                      >
-                        <RotateCcw className="mr-2 h-4 w-4" />
-                        出品中に戻す
-                      </Button>
+                      textbook?.transactionStatus === 'paid' || textbook?.transactionStatus === 'completed' ? (
+                        <Button
+                          variant="secondary"
+                          className="flex-1 bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed"
+                          disabled={true}
+                        >
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          決済完了済み
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          className="flex-1 border-green-200 text-green-700 hover:bg-green-50"
+                          onClick={() => handleStatusChange('available')}
+                        >
+                          <RotateCcw className="mr-2 h-4 w-4" />
+                          出品中に戻す
+                        </Button>
+                      )
                     ) : (
                       <Button
                         variant="outline"

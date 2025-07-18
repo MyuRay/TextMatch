@@ -25,7 +25,11 @@ import { useAuth } from "@/lib/useAuth"
 
 export default function PostTextbookPage() {
   const router = useRouter()
-  const { userProfile } = useAuth()
+  const { user, userProfile, loading } = useAuth()
+  
+  // デバッグ用ログ
+  console.log("Auth状態:", { user, userProfile, loading })
+  console.log("stripeAccountId:", userProfile?.stripeAccountId)
   const [formData, setFormData] = useState({
     isbn: "",
     title: "",
@@ -114,6 +118,21 @@ export default function PostTextbookPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    console.log("handleSubmit called")
+    console.log("userProfile in handleSubmit:", userProfile)
+    console.log("stripeAccountId in handleSubmit:", userProfile?.stripeAccountId)
+    
+    // Stripe Connect設定チェック
+    if (userProfile?.stripeAccountId === undefined) {
+      console.log("stripeAccountId未設定のため、説明画面にリダイレクト")
+      alert("教科書を出品するにはStripe Connectの設定が必要です。\n設定画面に移動します。")
+      router.push("/stripe-setup?return_to=/post-textbook")
+      return
+    }
+    
+    console.log("Stripe設定済み、出品処理続行")
+    
     setIsLoading(true)
 
     try {
@@ -369,7 +388,28 @@ export default function PostTextbookPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isLoading}
+                onClick={(e) => {
+                  console.log("Button clicked, userProfile:", userProfile)
+                  console.log("Button clicked, stripeAccountId:", userProfile?.stripeAccountId)
+                  console.log("Button clicked, stripeAccountId === undefined:", userProfile?.stripeAccountId === undefined)
+                  
+                  // Stripe設定チェックを直接実行
+                  if (userProfile?.stripeAccountId === undefined) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    console.log("stripeAccountId未設定のため、説明画面にリダイレクト")
+                    alert("教科書を出品するにはStripe Connectの設定が必要です。\n設定画面に移動します。")
+                    setTimeout(() => {
+                      router.push("/stripe-setup?return_to=/post-textbook")
+                    }, 100)
+                    return
+                  }
+                }}
+              >
                 {isLoading ? "出品中..." : "教科書を出品"}
               </Button>
             </CardFooter>

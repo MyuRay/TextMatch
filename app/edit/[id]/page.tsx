@@ -6,6 +6,7 @@ import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
+import { uploadImages } from "@/lib/storage"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,6 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, Upload, Trash2 } from "lucide-react"
+import { EditImageUpload } from "./EditImageUpload"
 
 export default function EditBookPage() {
   const router = useRouter()
@@ -28,9 +30,11 @@ export default function EditBookPage() {
     description: "",
     meetupLocation: ""
   })
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>([])
+  const [newImages, setNewImages] = useState<File[]>([])
   const [loading, setLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     const fetchBook = async () => {
@@ -47,7 +51,15 @@ export default function EditBookPage() {
           description: data.description || "",
           meetupLocation: data.meetupLocation || "",
         })
-        setImagePreview(data.imageUrl || null)
+        
+        // 既存画像の設定（新しい形式と古い形式の両方に対応）
+        if (data.imageUrls && Array.isArray(data.imageUrls)) {
+          setExistingImageUrls(data.imageUrls)
+        } else if (data.imageUrl) {
+          setExistingImageUrls([data.imageUrl])
+        } else {
+          setExistingImageUrls([])
+        }
       } else {
         alert("教科書が見つかりませんでした")
         router.push("/mypage")
@@ -66,17 +78,6 @@ export default function EditBookPage() {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -86,15 +87,41 @@ export default function EditBookPage() {
       alert("価格は300円以上で設定してください。")
       return
     }
+
+    // 画像が1枚もない場合はエラー
+    if (existingImageUrls.length === 0 && newImages.length === 0) {
+      alert("少なくとも1枚の画像を選択してください。")
+      return
+    }
     
-    const docRef = doc(db, "books", bookId)
-    await updateDoc(docRef, {
-      ...formData,
-      price: price,
-      imageUrl: imagePreview,
-    })
-    alert("教科書情報を更新しました！")
-    router.push("/mypage")
+    setIsSubmitting(true)
+    
+    try {
+      // 新しい画像をアップロード
+      let uploadedImageUrls: string[] = []
+      if (newImages.length > 0) {
+        uploadedImageUrls = await uploadImages(newImages, bookId)
+      }
+      
+      // 最終的な画像URL配列（既存 + 新規）
+      const finalImageUrls = [...existingImageUrls, ...uploadedImageUrls]
+      
+      const docRef = doc(db, "books", bookId)
+      await updateDoc(docRef, {
+        ...formData,
+        price: price,
+        imageUrls: finalImageUrls,
+        imageUrl: finalImageUrls[0] || null, // 下位互換性のため
+      })
+      
+      alert("教科書情報を更新しました！")
+      router.push("/mypage")
+    } catch (error) {
+      console.error("更新エラー:", error)
+      alert("更新中にエラーが発生しました。もう一度お試しください。")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleDelete = async () => {
@@ -189,20 +216,12 @@ export default function EditBookPage() {
               <div className="space-y-4">
                 <div className="grid gap-2">
                   <Label>教科書の画像</Label>
-                  <div className="relative border-2 border-dashed rounded-lg px-4 pt-4 pb-2 text-center max-w-xs mx-auto">
-                    {imagePreview ? (
-                      <div className="relative aspect-[3/4] w-full mx-auto">
-                        <img src={imagePreview} alt="プレビュー" className="object-contain w-full h-full" />
-                        <Button type="button" variant="outline" size="sm" className="absolute top-2 right-2" onClick={() => setImagePreview(null)}>削除</Button>
-                      </div>
-                    ) : (
-                      <label className="cursor-pointer block py-4">
-                        <Upload className="mx-auto h-10 w-10 text-muted-foreground" />
-                        <p className="mt-1 text-sm text-muted-foreground">画像をアップロード</p>
-                        <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-                      </label>
-                    )}
-                  </div>
+                  <EditImageUpload
+                    existingImageUrls={existingImageUrls}
+                    newImages={newImages}
+                    setExistingImageUrls={setExistingImageUrls}
+                    setNewImages={setNewImages}
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="description">商品の説明</Label>
@@ -231,7 +250,9 @@ export default function EditBookPage() {
                 )}
               </Button>
             </div>
-            <Button type="submit">更新する</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "更新中..." : "更新する"}
+            </Button>
           </CardFooter>
         </form>
       </Card>

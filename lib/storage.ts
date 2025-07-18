@@ -92,3 +92,50 @@ export const uploadAvatar = async (file: File, userId: string) => {
     throw error;
   }
 };
+
+// 複数画像を一括アップロードする関数
+export const uploadImages = async (files: File[], bookId?: string): Promise<string[]> => {
+  try {
+    console.log("複数画像アップロード開始:", files.length, "枚");
+    
+    const uploadPromises = files.map(async (file, index) => {
+      // ファイルサイズチェック (10MB制限)
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error(`画像 ${index + 1}: ファイルサイズが大きすぎます (10MB以下にしてください)`);
+      }
+      
+      // ファイルタイプチェック
+      if (!file.type.startsWith('image/')) {
+        throw new Error(`画像 ${index + 1}: 画像ファイルを選択してください`);
+      }
+      
+      const fileName = bookId 
+        ? `${bookId}-${index}-${uuidv4()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+        : `${uuidv4()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      
+      const imageRef = ref(storage, `textbookImages/${fileName}`);
+      
+      console.log(`画像 ${index + 1} アップロード中...`);
+      const uploadResult = await withTimeout(
+        uploadBytes(imageRef, file),
+        60000 // 60秒タイムアウト
+      );
+      
+      console.log(`画像 ${index + 1} ダウンロードURL取得中...`);
+      const url = await withTimeout(
+        getDownloadURL(imageRef),
+        30000 // 30秒タイムアウト
+      );
+      
+      console.log(`画像 ${index + 1} アップロード完了:`, url);
+      return url;
+    });
+    
+    const urls = await Promise.all(uploadPromises);
+    console.log("全画像アップロード完了:", urls);
+    return urls;
+  } catch (error) {
+    console.error("複数画像アップロードエラー詳細:", error);
+    throw error;
+  }
+};

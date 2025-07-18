@@ -212,11 +212,20 @@ export default function EarningsDashboard({ stripeAccountId }: EarningsDashboard
               </Button>
             </div>
             
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <strong>Stripeダッシュボードについて：</strong> 上のボタンから自分のStripeアカウントにアクセスできます。
-                出金、取引履歴の確認、アカウント設定の変更などが行えます。
-              </p>
+            <div className="space-y-3">
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-800">
+                  <strong>⏱️ 出金タイミングについて：</strong> 初回売上は出金可能額への反映まで約1週間かかります。
+                  それ以降の売上は2日を目安に反映されます。
+                </p>
+              </div>
+              
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Stripeダッシュボードについて：</strong> 上のボタンから自分のStripeアカウントにアクセスできます。
+                  出金、取引履歴の確認、アカウント設定の変更などが行えます。
+                </p>
+              </div>
             </div>
           </div>
         </CardContent>

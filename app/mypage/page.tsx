@@ -6,7 +6,7 @@ import Link from "next/link"
 import { collection, doc, getDoc, getDocs, query, where, setDoc } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import { useAuth } from "@/lib/useAuth"
-import { Textbook, UserProfile, getUserFavorites, getUserPurchases, getUserSellingBooks, createOrGetConversation, removeFromFavorites } from "@/lib/firestore"
+import { Textbook, UserProfile, getUserFavorites, getUserPurchases, getUserSellingBooks, getUserTransactionBooks, createOrGetConversation, removeFromFavorites } from "@/lib/firestore"
 import { uploadAvatar } from "@/lib/storage"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -187,19 +187,21 @@ export default function MyPage() {
           )
           const buyerSnapshot = await getDocs(buyerTransactionsQuery)
           
-          // 出品者として取引中の教科書（userIdで検索）
-          const sellerTransactionsQuery = query(
-            collection(db, "books"),
-            where("userId", "==", user.uid),
-            where("transactionStatus", "==", "in_progress")
-          )
-          const sellerSnapshot = await getDocs(sellerTransactionsQuery)
+          // 出品者として取引中の教科書
+          const sellerTransactionBooks = await getUserTransactionBooks(user.uid)
           
-          const transactionData = [
-            ...buyerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), userRole: 'buyer' } as any)),
-            ...sellerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), userRole: 'seller' } as any))
-          ] as Textbook[]
+          const buyerTransactionData = buyerSnapshot.docs.map(doc => ({ 
+            id: doc.id, 
+            ...doc.data(),
+            userRole: 'buyer'
+          } as any)) as Textbook[]
           
+          const sellerTransactionData = sellerTransactionBooks.map(book => ({
+            ...book,
+            userRole: 'seller'
+          } as any)) as Textbook[]
+          
+          const transactionData = [...buyerTransactionData, ...sellerTransactionData]
           setTransactionBooks(transactionData)
         } catch (transactionError) {
           console.error("取引中教科書取得エラー:", transactionError)

@@ -72,7 +72,7 @@ interface Conversation {
   }
   otherUser?: {
     id: string
-    fullName: string
+    name: string
     avatarUrl?: string
   }
   latestMessage?: Message
@@ -305,7 +305,7 @@ export default function MessagesPage() {
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <h3 className="font-semibold truncate">
-                                {conversation.otherUser?.fullName || '匿名ユーザー'}
+                                {conversation.otherUser?.name || '匿名ユーザー'}
                               </h3>
                               <Badge variant={conversation.userRole === 'buyer' ? 'secondary' : 'default'}>
                                 {conversation.userRole === 'buyer' ? '販売者' : '購入希望者'}
@@ -362,7 +362,7 @@ export default function MessagesPage() {
                           {conversation.latestMessage && (
                             <div className="text-sm text-muted-foreground">
                               <span className="font-medium">
-                                {conversation.latestMessage.senderId === user?.uid ? 'あなた' : conversation.otherUser?.fullName}:
+                                {conversation.latestMessage.senderId === user?.uid ? 'あなた' : conversation.otherUser?.name}:
                               </span>
                               <span className="ml-1 truncate">
                                 {conversation.latestMessage.text}

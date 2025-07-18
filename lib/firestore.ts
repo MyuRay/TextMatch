@@ -12,6 +12,7 @@ import {
   where,
   setDoc,
   deleteDoc,
+  serverTimestamp,
 } from "firebase/firestore"
 
 export interface Textbook {
@@ -35,6 +36,8 @@ export interface Textbook {
   purchasedAt?: Timestamp
   expirationDate?: string | null
   genre?: string
+  transactionStatus?: 'pending' | 'paid' | 'completed'
+  completedAt?: Timestamp
 }
 
 export interface UserProfile {
@@ -111,6 +114,7 @@ export const getTextbookById = async (id: string): Promise<Textbook | null> => {
 export const addTextbook = async (data: Omit<Textbook, 'id' | 'createdAt'>): Promise<string> => {
   const docRef = await addDoc(collection(db, "books"), {
     ...data,
+    status: data.status || 'available', // statusが未設定の場合は'available'に設定
     createdAt: Timestamp.now(),
   })
   return docRef.id
@@ -239,6 +243,11 @@ export const updateTextbookStatus = async (
 ): Promise<void> => {
   try {
     const bookRef = doc(db, "books", bookId)
+    
+    // 現在の状態を取得
+    const currentBook = await getDoc(bookRef)
+    const currentStatus = currentBook.exists() ? currentBook.data().status : null
+    
     const updateData: any = { 
       status,
       updatedAt: Timestamp.now()
@@ -253,9 +262,117 @@ export const updateTextbookStatus = async (
     }
     
     await setDoc(bookRef, updateData, { merge: true })
+    
+    // 売り切れから出品中に戻った場合は通知を送信
+    if (currentStatus === 'sold' && status === 'available') {
+      await notifyInterestedUsers(bookId, currentBook.data())
+    }
   } catch (error) {
     console.error("教科書状態更新失敗:", error)
     throw error
+  }
+}
+
+// ✅ 興味のあるユーザーに通知を送信
+const notifyInterestedUsers = async (bookId: string, bookData: any): Promise<void> => {
+  try {
+    const { createTextbookAvailableNotification } = await import('./notifications')
+    
+    // お気に入りに追加しているユーザーを取得
+    const favoritesRef = collection(db, "favorites")
+    const favoritesQuery = query(favoritesRef, where("bookId", "==", bookId))
+    const favoritesSnapshot = await getDocs(favoritesQuery)
+    
+    // この教科書について会話したことがあるユーザーを取得
+    const conversationsRef = collection(db, "conversations")
+    const conversationsQuery = query(conversationsRef, where("bookId", "==", bookId))
+    const conversationsSnapshot = await getDocs(conversationsQuery)
+    
+    // 通知対象ユーザーIDを収集（重複を避けるためSetを使用）
+    const interestedUserIds = new Set<string>()
+    
+    // お気に入りユーザーを追加
+    favoritesSnapshot.docs.forEach(doc => {
+      const userId = doc.data().userId
+      if (userId && userId !== bookData.userId) { // 出品者自身は除外
+        interestedUserIds.add(userId)
+      }
+    })
+    
+    // 会話参加者を追加し、同時に会話IDも保存
+    const conversationData = new Map<string, string>() // userId -> conversationId
+    conversationsSnapshot.docs.forEach(doc => {
+      const data = doc.data()
+      if (data.buyerId && data.buyerId !== bookData.userId) {
+        interestedUserIds.add(data.buyerId)
+        conversationData.set(data.buyerId, doc.id)
+      }
+      if (data.sellerId && data.sellerId !== bookData.userId) {
+        interestedUserIds.add(data.sellerId)
+        conversationData.set(data.sellerId, doc.id)
+      }
+    })
+    
+    // 各ユーザーに通知を送信
+    const notificationPromises = Array.from(interestedUserIds).map(userId => 
+      createTextbookAvailableNotification(userId, bookData.title, bookId)
+    )
+    
+    await Promise.all(notificationPromises)
+    
+    // 各会話にシステムメッセージを送信
+    const messagePromises = conversationsSnapshot.docs.map(async (conversationDoc) => {
+      try {
+        const messagesRef = collection(db, "conversations", conversationDoc.id, "messages")
+        await addDoc(messagesRef, {
+          text: `📢 システム通知: 「${bookData.title}」が再び出品されました。購入をご希望の場合は、出品者にメッセージをお送りください。`,
+          senderId: "system",
+          createdAt: serverTimestamp(),
+          isRead: false,
+          isSystemMessage: true
+        })
+        console.log(`会話 ${conversationDoc.id} にシステムメッセージを送信しました`)
+      } catch (error) {
+        console.error(`会話 ${conversationDoc.id} へのメッセージ送信エラー:`, error)
+      }
+    })
+    
+    await Promise.all(messagePromises)
+    
+    console.log(`${interestedUserIds.size}人のユーザーに再出品通知を送信しました`)
+    console.log(`${conversationsSnapshot.docs.length}件の会話にシステムメッセージを送信しました`)
+  } catch (error) {
+    console.error("興味のあるユーザーへの通知送信失敗:", error)
+    // 通知送信の失敗は状態更新処理を妨げないようにする
+  }
+}
+
+// ✅ 教科書の閲覧数を更新
+export const incrementTextbookViews = async (bookId: string, userId?: string): Promise<void> => {
+  try {
+    const bookRef = doc(db, "books", bookId)
+    const bookDoc = await getDoc(bookRef)
+    
+    if (!bookDoc.exists()) {
+      console.warn("教科書が見つかりません:", bookId)
+      return
+    }
+    
+    const bookData = bookDoc.data()
+    
+    // 自分の投稿は閲覧数に含めない
+    if (userId && bookData.userId === userId) {
+      return
+    }
+    
+    const currentViews = bookData.views || 0
+    await setDoc(bookRef, { 
+      views: currentViews + 1,
+      updatedAt: Timestamp.now()
+    }, { merge: true })
+  } catch (error) {
+    console.error("閲覧数更新失敗:", error)
+    // 閲覧数の更新失敗はユーザー体験を損なわないよう、エラーを投げない
   }
 }
 
@@ -421,17 +538,29 @@ export const getUserSellingBooks = async (userId: string): Promise<Textbook[]> =
   try {
     console.log("出品中教科書取得開始:", userId)
     const textbooksRef = collection(db, "books")
-    const q = query(
+    
+    // ユーザーのすべての教科書を取得
+    const userBooksQuery = query(
       textbooksRef,
       where("userId", "==", userId)
     )
-    const snapshot = await getDocs(q)
-    console.log("出品中教科書ドキュメント数:", snapshot.docs.length)
+    const userSnapshot = await getDocs(userBooksQuery)
+    console.log("ユーザーの全教科書ドキュメント数:", userSnapshot.docs.length)
     
-    const sellingBooks = snapshot.docs.map(doc => ({
+    const allUserBooks = userSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
     })) as Textbook[]
+    
+    // statusがavailableまたは未設定（undefined/null）の教科書のみをフィルタリング
+    const sellingBooks = allUserBooks.filter(book => {
+      const status = book.status
+      const isAvailable = status === "available" || status === undefined || status === null
+      console.log(`教科書 ${book.title} - status: ${status}, isAvailable: ${isAvailable}`)
+      return isAvailable
+    })
+    
+    console.log("フィルタリング後の出品中教科書数:", sellingBooks.length)
     
     // 作成日順にソート（新しい順）
     const sortedBooks = sellingBooks.sort((a, b) => {
@@ -444,6 +573,49 @@ export const getUserSellingBooks = async (userId: string): Promise<Textbook[]> =
     return sortedBooks
   } catch (error) {
     console.error("出品中教科書取得失敗:", error)
+    console.error("エラー詳細:", {
+      code: error instanceof Error ? (error as any).code : undefined,
+      message: error instanceof Error ? error.message : String(error),
+      userId
+    })
+    return []
+  }
+}
+
+// ✅ ユーザーの取引中教科書を取得
+export const getUserTransactionBooks = async (userId: string): Promise<Textbook[]> => {
+  try {
+    console.log("取引中教科書取得開始:", userId)
+    const textbooksRef = collection(db, "books")
+    const q = query(
+      textbooksRef,
+      where("userId", "==", userId),
+      where("status", "==", "sold")
+    )
+    const snapshot = await getDocs(q)
+    console.log("取引中教科書ドキュメント数:", snapshot.docs.length)
+    
+    const allSoldBooks = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Textbook[]
+    
+    // transactionStatusが'completed'でないもの（取引中）のみを抽出
+    const transactionBooks = allSoldBooks.filter(book => 
+      book.transactionStatus !== 'completed'
+    )
+    
+    // 作成日順にソート（新しい順）
+    const sortedBooks = transactionBooks.sort((a, b) => {
+      const aTime = a.createdAt?.seconds || 0
+      const bTime = b.createdAt?.seconds || 0
+      return bTime - aTime
+    })
+    
+    console.log("取引中教科書:", sortedBooks)
+    return sortedBooks
+  } catch (error) {
+    console.error("取引中教科書取得失敗:", error)
     console.error("エラー詳細:", {
       code: error instanceof Error ? (error as any).code : undefined,
       message: error instanceof Error ? error.message : String(error),
@@ -559,6 +731,41 @@ export const removeOfficialStatus = async (userId: string): Promise<void> => {
     console.log(`ユーザー ${userId} の公式ステータスを削除しました`)
   } catch (error) {
     console.error("公式ステータス削除失敗:", error)
+    throw error
+  }
+}
+
+// ✅ 既存の出品データでstatusフィールドが未設定の教科書を'available'に更新
+export const updateMissingStatusFields = async (): Promise<void> => {
+  try {
+    console.log("statusフィールドが未設定の教科書を更新開始")
+    
+    // すべての教科書を取得
+    const textbooksRef = collection(db, "books")
+    const snapshot = await getDocs(textbooksRef)
+    console.log("全教科書数:", snapshot.docs.length)
+    
+    let updatedCount = 0
+    
+    for (const docSnapshot of snapshot.docs) {
+      const data = docSnapshot.data()
+      
+      // statusフィールドが未設定またはnullの場合
+      if (data.status === undefined || data.status === null) {
+        console.log(`教科書 ${docSnapshot.id} (${data.title || '不明'}) のstatusを更新中...`)
+        
+        await setDoc(doc(db, "books", docSnapshot.id), {
+          status: 'available'
+        }, { merge: true })
+        
+        updatedCount++
+        console.log(`教科書 ${docSnapshot.id} のstatusを'available'に更新しました`)
+      }
+    }
+    
+    console.log(`statusフィールドの更新完了: ${updatedCount}件の教科書を更新しました`)
+  } catch (error) {
+    console.error("statusフィールド更新失敗:", error)
     throw error
   }
 }

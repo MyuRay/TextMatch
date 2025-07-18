@@ -57,6 +57,10 @@ function CheckoutForm({ amount, textbookTitle, onSuccess }: Omit<PaymentFormProp
         </p>
       </CardHeader>
       <CardContent>
+        <div className="text-amber-600 text-sm mb-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+          <p className="font-medium">⚠️ ご注意：JCBカードはご利用いただけません</p>
+          <p className="text-xs mt-1">VISA、Mastercard、American Expressのみ対応しております</p>
+        </div>
         <form onSubmit={handleSubmit}>
           <PaymentElement className="mb-4" />
           {message && (

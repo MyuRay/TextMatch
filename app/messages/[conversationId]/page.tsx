@@ -753,6 +753,29 @@ export default function ConversationPage() {
           )}
 
 
+          {/* 購入者向け販売許可待ち表示 */}
+          {conversation && user && user.uid === conversation.buyerId && textbook?.status === 'available' && (
+            <Card className="bg-blue-50 border-blue-200 mt-2">
+              <CardContent className="p-3">
+                <div className="space-y-2">
+                  <h4 className="font-medium text-blue-900 text-sm">💬 販売許可待ち</h4>
+                  <p className="text-xs text-blue-800 mb-2">
+                    出品者との相談後、販売許可が出た場合に購入が可能になります。
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed text-xs px-3 py-1 h-7 w-full"
+                    disabled={true}
+                  >
+                    <CreditCard className="mr-1 h-3 w-3" />
+                    購入する（許可待ち）
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* 購入者向け決済・受取表示 */}
           {conversation && user && user.uid === conversation.buyerId && textbook?.status === 'sold' && textbook?.buyerId === user.uid && (
             <Card className="bg-green-50 border-green-200 mt-2">
@@ -878,7 +901,7 @@ export default function ConversationPage() {
                   key={msg.id}
                   className={`flex gap-2 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
                 >
-                  {!isCurrentUser && (
+                  {!isCurrentUser && !msg.isSystemMessage && (
                     <Avatar className="h-8 w-8 mt-1">
                       <AvatarImage src={userProfile?.avatarUrl || "/placeholder.svg"} />
                       <AvatarFallback className="bg-muted text-xs">
@@ -887,25 +910,39 @@ export default function ConversationPage() {
                     </Avatar>
                   )}
                   
-                  <div className={`max-w-[70%] ${isCurrentUser ? 'text-right' : 'text-left'}`}>
+                  {msg.isSystemMessage && (
+                    <div className="flex items-center justify-center w-8 h-8 mt-1 bg-blue-100 rounded-full">
+                      <span className="text-xs text-blue-600">🔔</span>
+                    </div>
+                  )}
+                  
+                  <div className={`max-w-[70%] ${isCurrentUser ? 'text-right' : 'text-left'} ${msg.isSystemMessage ? 'max-w-[90%]' : ''}`}>
                     <div className={`text-xs text-muted-foreground mb-1 ${isCurrentUser ? 'text-right' : 'text-left'} flex items-center gap-1 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
-                      <span>{userProfile?.name || (isCurrentUser ? "あなた" : "不明")}</span>
-                      <OfficialIcon 
-                        isOfficial={userProfile?.isOfficial} 
-                        officialType={userProfile?.officialType as 'admin' | 'support' | 'team'} 
-                        className="scale-75"
-                      />
+                      <span>{msg.isSystemMessage ? "システム" : (userProfile?.name || (isCurrentUser ? "あなた" : "不明"))}</span>
+                      {!msg.isSystemMessage && (
+                        <OfficialIcon 
+                          isOfficial={userProfile?.isOfficial} 
+                          officialType={userProfile?.officialType as 'admin' | 'support' | 'team'} 
+                          className="scale-75"
+                        />
+                      )}
                     </div>
                     <div
                       className={`p-3 rounded-2xl ${
-                        isCurrentUser
+                        msg.isSystemMessage
+                          ? "bg-blue-50 border border-blue-200 text-blue-800"
+                          : isCurrentUser
                           ? "bg-primary text-primary-foreground"
                           : "bg-white border shadow-sm"
                       }`}
                     >
                       <p className="text-sm">{msg.text}</p>
                       <div className={`flex items-center gap-1 mt-1 text-xs ${
-                        isCurrentUser ? 'text-primary-foreground/70 justify-end' : 'text-muted-foreground justify-start'
+                        msg.isSystemMessage 
+                          ? 'text-blue-600 justify-start'
+                          : isCurrentUser 
+                          ? 'text-primary-foreground/70 justify-end' 
+                          : 'text-muted-foreground justify-start'
                       }`}>
                         <Clock className="h-3 w-3" />
                         {msg.createdAt?.toDate?.() ? (
@@ -920,7 +957,7 @@ export default function ConversationPage() {
                     </div>
                   </div>
                   
-                  {isCurrentUser && (
+                  {isCurrentUser && !msg.isSystemMessage && (
                     <Avatar className="h-8 w-8 mt-1">
                       <AvatarImage src={userProfile?.avatarUrl || "/placeholder.svg"} />
                       <AvatarFallback className="bg-primary/10 text-primary text-xs">
