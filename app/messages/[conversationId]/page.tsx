@@ -865,12 +865,12 @@ export default function ConversationPage() {
                           {paymentLoading ? '準備中...' : `¥${textbook.price?.toLocaleString()}で決済`}
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
+                      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                        <DialogHeader className="pb-2">
                           <DialogTitle>決済情報の入力</DialogTitle>
                         </DialogHeader>
                         {clientSecret && (
-                          <div className="p-4">
+                          <div className="overflow-y-auto max-h-[70vh] px-1">
                             <StripePaymentForm
                               clientSecret={clientSecret}
                               amount={textbook.price}

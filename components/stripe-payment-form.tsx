@@ -49,25 +49,25 @@ function CheckoutForm({ amount, textbookTitle, onSuccess }: Omit<PaymentFormProp
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="pb-4">
-        <CardTitle className="text-lg">決済情報</CardTitle>
+    <Card className="w-full mx-auto border-0 shadow-none">
+      <CardHeader className="pb-3 px-0">
+        <CardTitle className="text-base sm:text-lg">決済情報</CardTitle>
         <div className="text-sm text-gray-600">
-          <p className="line-clamp-2 break-words mb-1">
+          <p className="line-clamp-2 break-words mb-1 text-xs sm:text-sm">
             {textbookTitle}
           </p>
-          <p className="font-medium text-lg text-gray-900">
+          <p className="font-medium text-base sm:text-lg text-gray-900">
             ¥{amount.toLocaleString()}
           </p>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="text-amber-600 text-sm p-3 bg-amber-50 rounded-lg border border-amber-200">
-          <p className="font-medium text-xs sm:text-sm">⚠️ ご注意：JCBカードはご利用いただけません</p>
+      <CardContent className="space-y-3 px-0">
+        <div className="text-amber-600 text-sm p-2 sm:p-3 bg-amber-50 rounded-lg border border-amber-200">
+          <p className="font-medium text-xs">⚠️ ご注意：JCBカードはご利用いただけません</p>
           <p className="text-xs mt-1">VISA、Mastercard、American Expressのみ対応しております</p>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="min-h-[120px]">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="min-h-[100px] sm:min-h-[120px]">
             <PaymentElement 
               className="w-full" 
               options={{
@@ -81,17 +81,19 @@ function CheckoutForm({ amount, textbookTitle, onSuccess }: Omit<PaymentFormProp
             />
           </div>
           {message && (
-            <div className="text-red-600 text-sm p-3 bg-red-50 rounded-lg border border-red-200 break-words">
+            <div className="text-red-600 text-sm p-2 sm:p-3 bg-red-50 rounded-lg border border-red-200 break-words">
               {message}
             </div>
           )}
-          <Button 
-            type="submit" 
-            disabled={!stripe || isLoading}
-            className="w-full h-12 text-sm sm:text-base"
-          >
-            {isLoading ? '処理中...' : `¥${amount.toLocaleString()}で購入`}
-          </Button>
+          <div className="pt-2">
+            <Button 
+              type="submit" 
+              disabled={!stripe || isLoading}
+              className="w-full h-11 sm:h-12 text-sm sm:text-base font-medium"
+            >
+              {isLoading ? '処理中...' : `¥${amount.toLocaleString()}で購入`}
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>
