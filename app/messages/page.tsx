@@ -20,27 +20,18 @@ export const dynamic = 'force-dynamic'
 // 最新メッセージを取得するヘルパー関数
 const getLatestMessage = async (conversationId: string) => {
   try {
-    console.log("最新メッセージ取得開始 - 会話ID:", conversationId)
     const messagesRef = collection(db, "conversations", conversationId, "messages")
     const q = query(messagesRef, orderBy("createdAt", "desc"), limit(1))
     const snapshot = await getDocs(q)
     
-    console.log("スナップショット結果:", {
-      empty: snapshot.empty,
-      size: snapshot.size,
-      docs: snapshot.docs.length
-    })
-    
     if (!snapshot.empty) {
       const messageData = snapshot.docs[0].data()
-      console.log("取得したメッセージデータ:", messageData)
       return {
         id: snapshot.docs[0].id,
         ...messageData,
         createdAt: messageData.createdAt?.toDate() || new Date()
       }
     }
-    console.log("メッセージが見つかりませんでした")
     return null
   } catch (error) {
     console.error("最新メッセージ取得エラー:", error)
@@ -102,7 +93,6 @@ export default function MessagesPage() {
 
     try {
       setIsLoading(true)
-      console.log("会話一覧の取得を開始します。ユーザーID:", user.uid)
 
       // 購入者として参加している会話を取得
       const buyerQuery = query(
@@ -110,7 +100,6 @@ export default function MessagesPage() {
         where("buyerId", "==", user.uid)
       )
       const buyerSnapshot = await getDocs(buyerQuery)
-      console.log("購入者として参加している会話数:", buyerSnapshot.size)
 
       // 販売者として参加している会話を取得  
       const sellerQuery = query(
@@ -118,7 +107,6 @@ export default function MessagesPage() {
         where("sellerId", "==", user.uid)
       )
       const sellerSnapshot = await getDocs(sellerQuery)
-      console.log("販売者として参加している会話数:", sellerSnapshot.size)
 
       const allConversations: any[] = []
       
@@ -140,53 +128,27 @@ export default function MessagesPage() {
         })
       })
 
-      console.log("取得した全ての会話:", allConversations)
-
       // 各会話の詳細情報を取得
       const conversationsWithDetails = await Promise.all(
         allConversations.map(async (conv) => {
           try {
-            console.log("会話の詳細情報を取得中:", conv.id)
-            console.log("会話データの全体:", conv)
-            
             // 相手のユーザー情報を取得
             const otherUserId = conv.userRole === 'buyer' ? conv.sellerId : conv.buyerId
-            console.log("相手のユーザーID:", otherUserId)
-            
             const otherUser = await getUserProfile(otherUserId)
-            console.log("相手のユーザー情報:", otherUser)
 
             // 教科書情報を取得
-            console.log("conv.bookId:", (conv as any).bookId)
             const textbook = (conv as any).bookId ? await getTextbookById((conv as any).bookId) : null
-            console.log("教科書情報:", textbook)
-            
-            if ((conv as any).bookId && !textbook) {
-              console.warn(`教科書ID ${(conv as any).bookId} の教科書が見つかりません`)
-            }
 
             // 最新メッセージを取得
             const latestMessage = await getLatestMessage(conv.id)
-            console.log("最新メッセージ:", latestMessage)
 
             // メッセージが存在しない会話はスキップ
-            if (!latestMessage) {
-              console.log("メッセージが存在しないため会話をスキップ:", conv.id)
-              return null
-            }
+            if (!latestMessage) return null
 
             // 未読メッセージ数を計算（簡易版：自分以外から送信された最新メッセージが未読かどうか）
             const unreadCount = latestMessage && 
                                (latestMessage as any).senderId !== user.uid && 
                                !(latestMessage as any).isRead ? 1 : 0
-
-            console.log("最終的な会話データ:", {
-              ...conv,
-              otherUser,
-              textbook,
-              latestMessage,
-              unreadCount
-            })
 
             return {
               ...conv,
@@ -211,7 +173,6 @@ export default function MessagesPage() {
           return bTime.getTime() - aTime.getTime()
         })
 
-      console.log("最終的な会話一覧:", validConversations)
       setConversations(validConversations)
     } catch (error) {
       console.error("会話一覧取得エラー:", error)

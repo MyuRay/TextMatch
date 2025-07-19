@@ -160,9 +160,9 @@ export default function RegisterPage() {
       const user = await registerUser(formData.email, formData.password)
       console.log("Firebase Auth登録成功:", user.uid)
 
-      // ユーザープロフィール更新（Firebase Auth）
+      // ユーザープロフィール更新（Firebase Auth）- 本名をdisplayNameに保存
       await updateUserProfile(user, {
-        displayName: formData.nickname,
+        displayName: formData.fullName,
       })
 
       // アバター画像をアップロード
@@ -178,9 +178,9 @@ export default function RegisterPage() {
         }
       }
 
-      // Firestoreにプロフィール保存
+      // Firestoreにプロフィール保存 - 表示名をfullNameに保存
       await saveUserProfile(user.uid, {
-        fullName: formData.fullName,
+        fullName: formData.nickname,
         nickname: formData.nickname,
         email: formData.email,
         university: formData.university,

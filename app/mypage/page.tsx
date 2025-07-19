@@ -17,6 +17,10 @@ import {
   Avatar, AvatarFallback, AvatarImage
 } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Check, ChevronsUpDown } from "lucide-react"
 import {
   BookOpen, Edit, Heart, MessageSquare, Package, Settings, ShoppingBag, Trash2, Camera, X, Clock
 } from "lucide-react"
@@ -438,17 +442,71 @@ function TabButton({ label, icon, active, onClick, mobile = false }: {
   )
 }
 
+// CSVファイルから大学リストを読み込む関数
+const loadUniversitiesFromCSV = async (): Promise<string[]> => {
+  try {
+    const response = await fetch('/universities.csv')
+    const csvText = await response.text()
+    const lines = csvText.split('\n')
+    
+    // ヘッダー行をスキップして、空行を除外
+    const universities = lines
+      .slice(1) // ヘッダー行をスキップ
+      .map(line => line.trim())
+      .filter(line => line && !line.startsWith('日本の')) // 空行と「日本の〜一覧」を除外
+    
+    return universities
+  } catch (error) {
+    console.error('大学リストの読み込みに失敗しました:', error)
+    // フォールバック: 主要大学のみ
+    return [
+      "東京大学", "京都大学", "大阪大学", "名古屋大学", "東北大学", "九州大学", "北海道大学",
+      "早稲田大学", "慶應義塾大学", "上智大学", "明治大学", "青山学院大学", "立教大学", "中央大学", "法政大学"
+    ]
+  }
+}
+
 function ProfileCard({ user, userProfile }: { user: UserProfile, userProfile: UserProfile | null }) {
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [editData, setEditData] = useState({
     fullName: user.fullName,
     university: user.university,
+    grade: user.grade || "",
   })
   const [isLoading, setIsLoading] = useState(false)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const { user: authUser } = useAuth()
+  const [universities, setUniversities] = useState<string[]>([])
+  const [universitiesLoaded, setUniversitiesLoaded] = useState(false)
+  const [openUniversitySelect, setOpenUniversitySelect] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [filteredUniversities, setFilteredUniversities] = useState<string[]>([])
+
+  // CSVファイルから大学リストを読み込む
+  useEffect(() => {
+    const loadUniversities = async () => {
+      const universitiesList = await loadUniversitiesFromCSV()
+      setUniversities(universitiesList)
+      setFilteredUniversities(universitiesList)
+      setUniversitiesLoaded(true)
+    }
+    
+    loadUniversities()
+  }, [])
+
+  // 検索クエリに基づいて大学リストをフィルタリング
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredUniversities(universities)
+    } else {
+      const filtered = universities.filter(university =>
+        university.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+      setFilteredUniversities(filtered)
+    }
+  }, [searchQuery, universities])
 
   // アバターファイルが変更された時のプレビュー更新
   useEffect(() => {
@@ -487,6 +545,12 @@ function ProfileCard({ user, userProfile }: { user: UserProfile, userProfile: Us
     return name.charAt(0).toUpperCase()
   }
 
+  const handleSelectUniversity = (university: string) => {
+    setEditData((prev) => ({ ...prev, university }))
+    setOpenUniversitySelect(false)
+    setSearchQuery("")
+  }
+
   const handleSave = async () => {
     if (!authUser) return
     
@@ -514,6 +578,7 @@ function ProfileCard({ user, userProfile }: { user: UserProfile, userProfile: Us
         ...user,
         fullName: editData.fullName,
         university: editData.university,
+        grade: editData.grade,
         avatarUrl: newAvatarUrl,
       }, { merge: true })
       
@@ -535,9 +600,11 @@ function ProfileCard({ user, userProfile }: { user: UserProfile, userProfile: Us
     setEditData({
       fullName: user.fullName,
       university: user.university,
+      grade: user.grade || "",
     })
     setAvatarFile(null)
     setAvatarPreview(null)
+    setSearchQuery("")
     setIsEditing(false)
   }
 
@@ -606,11 +673,74 @@ function ProfileCard({ user, userProfile }: { user: UserProfile, userProfile: Us
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">大学</label>
-              <Input
-                value={editData.university}
-                onChange={(e) => setEditData(prev => ({ ...prev, university: e.target.value }))}
-                placeholder="大学名を入力"
-              />
+              <Popover open={openUniversitySelect} onOpenChange={setOpenUniversitySelect}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openUniversitySelect}
+                    className="w-full justify-between"
+                    disabled={!universitiesLoaded}
+                  >
+                    {editData.university || "大学を選択してください"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command shouldFilter={false}>
+                    <CommandInput 
+                      placeholder="大学名を検索..." 
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                    />
+                    <CommandList>
+                      <CommandEmpty>
+                        {universitiesLoaded ? "該当する大学が見つかりません" : "大学リストを読み込み中..."}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {filteredUniversities.map((university) => (
+                          <CommandItem
+                            key={university}
+                            value={university}
+                            onSelect={() => handleSelectUniversity(university)}
+                          >
+                            <Check
+                              className={`mr-2 h-4 w-4 ${
+                                editData.university === university ? "opacity-100" : "opacity-0"
+                              }`}
+                            />
+                            {university}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">学年</label>
+              <Select value={editData.grade} onValueChange={(value) => setEditData(prev => ({ ...prev, grade: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="学年を選択（任意）" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="学部1年">学部1年</SelectItem>
+                  <SelectItem value="学部2年">学部2年</SelectItem>
+                  <SelectItem value="学部3年">学部3年</SelectItem>
+                  <SelectItem value="学部4年">学部4年</SelectItem>
+                  <SelectItem value="学部5年">学部5年</SelectItem>
+                  <SelectItem value="学部6年">学部6年</SelectItem>
+                  <SelectItem value="修士1年">修士1年</SelectItem>
+                  <SelectItem value="修士2年">修士2年</SelectItem>
+                  <SelectItem value="博士1年">博士1年</SelectItem>
+                  <SelectItem value="博士2年">博士2年</SelectItem>
+                  <SelectItem value="博士3年">博士3年</SelectItem>
+                  <SelectItem value="研究生">研究生</SelectItem>
+                  <SelectItem value="科目等履修生">科目等履修生</SelectItem>
+                  <SelectItem value="その他">その他</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">メール（変更不可）</label>
@@ -643,6 +773,10 @@ function ProfileCard({ user, userProfile }: { user: UserProfile, userProfile: Us
               <div>
                 <p className="text-sm font-medium text-muted-foreground">大学</p>
                 <p className="text-base">{user.university}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">学年</p>
+                <p className="text-base">{user.grade || "未設定"}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">メール</p>
