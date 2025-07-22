@@ -254,6 +254,7 @@ export default function HomePage() {
         </section>
 
         <HowItWorksSection user={user} />
+        <SponsorSection />
         <CallToActionSection />
         {!user && <AuthCTASection />}
       </main>
@@ -295,6 +296,75 @@ function HowItWorksSection({ user }: { user: any }) {
             </Button>
           </div>
         )}
+      </div>
+    </section>
+  )
+}
+
+function SponsorSection() {
+  const sponsors = [
+    {
+      name: "千葉工業大学デジタル変革科学化高木研究室",
+      logo: "/sponsors/takagilab_high_colored.png",
+      url: "https://digitalx.one/professors/"
+    },
+    {
+      name: "W3T",
+      logo: "/sponsors/icon_w3club.png", 
+      url: ""
+    }
+  ]
+
+  return (
+    <section className="py-12 md:py-16 bg-gray-50">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">協賛企業・団体</h2>
+          <p className="text-gray-600 text-sm md:text-base">
+            TextMatchをご支援いただいている企業・団体の皆様
+          </p>
+        </div>
+        
+        {/* 全デバイス共通: 2列中央配置 */}
+        <div className="flex justify-center">
+          <div className="grid grid-cols-2 gap-6 md:gap-12 max-w-lg">
+            {sponsors.map((sponsor, index) => (
+              <div
+                key={index}
+                className="bg-black rounded-lg shadow-lg border border-gray-800 h-20 md:h-28 w-36 md:w-48 flex items-center justify-center p-2 md:p-3 hover:bg-gray-900 hover:shadow-xl transition-all cursor-pointer group"
+                onClick={() => sponsor.url && window.open(sponsor.url, '_blank')}
+              >
+                <div className="w-full h-full flex items-center justify-center">
+                  <Image
+                    src={sponsor.logo}
+                    alt={sponsor.name}
+                    width={120}
+                    height={60}
+                    className="max-w-full max-h-full object-contain"
+                    onError={(e) => {
+                      // 画像読み込みエラー時はテキストを表示
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent) {
+                        parent.innerHTML = `<span class="text-white text-xs text-center">${sponsor.name}</span>`;
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <div className="text-center mt-8">
+          <p className="text-gray-500 text-sm">
+            協賛に関するお問い合わせは{" "}
+            <Link href="/contact" className="text-primary hover:underline">
+              こちら
+            </Link>
+          </p>
+        </div>
       </div>
     </section>
   )
