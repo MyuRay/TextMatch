@@ -41,10 +41,14 @@ export function Header() {
       
       if (newState) {
         console.log('✅ プッシュ通知がONになりました')
-        alert('プッシュ通知がONになりました！')
+        // モバイルでは短いメッセージで
+        const message = window.innerWidth < 768 ? '通知ON' : 'プッシュ通知がONになりました！'
+        alert(message)
       } else {
         console.log('📴 プッシュ通知がOFFになりました')
-        alert('プッシュ通知がOFFになりました')
+        // モバイルでは短いメッセージで
+        const message = window.innerWidth < 768 ? '通知OFF' : 'プッシュ通知がOFFになりました'
+        alert(message)
       }
     } catch (error) {
       console.error('通知設定エラー:', error)
@@ -161,10 +165,28 @@ export function Header() {
         </nav>
 
         {/* Mobile Actions */}
-        <div className="lg:hidden flex items-center gap-2">
-          {/* ログイン時のみ通知ベルを表示 */}
+        <div className="lg:hidden flex items-center gap-0.5">
+          {/* ログイン時のみ通知関連を表示 */}
           {!loading && user && (
-            <NotificationBell />
+            <>
+              <NotificationBell />
+              {/* プッシュ通知オン/オフボタン */}
+              {showNotificationButton && (
+                <Button
+                  variant="ghost" 
+                  size="sm"
+                  onClick={handleNotificationToggle}
+                  className="h-9 w-9 p-0 hover:bg-gray-100"
+                  title={isEnabled ? "プッシュ通知ON (タップでOFF)" : "プッシュ通知OFF (タップでON)"}
+                >
+                  {isEnabled ? (
+                    <Bell className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <BellOff className="h-5 w-5 text-gray-400" />
+                  )}
+                </Button>
+              )}
+            </>
           )}
           
           {/* Mobile Menu Button */}
@@ -214,27 +236,6 @@ export function Header() {
                     </span>
                   )}
                 </Link>
-                <div className="flex items-center gap-3 py-2">
-                  <Bell className="h-4 w-4" />
-                  <span>プッシュ通知設定</span>
-                  <div className="ml-auto flex items-center gap-2">
-                    {showNotificationButton && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleNotificationToggle}
-                        className="h-6 w-6 p-0"
-                        title={isEnabled ? "通知ON" : "通知OFF"}
-                      >
-                        {isEnabled ? (
-                          <Bell className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <BellOff className="h-4 w-4 text-gray-400" />
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                </div>
                 <Link href="/mypage" onClick={() => setIsMobileMenuOpen(false)}>
                   <Button variant="outline" className="w-full justify-start flex items-center gap-3 border-2 hover:bg-primary/5">
                     <Avatar className="w-7 h-7">

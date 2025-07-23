@@ -24,7 +24,7 @@ messaging.onBackgroundMessage(function(payload) {
     body: payload.notification?.body || payload.data?.body || '新しい通知があります',
     icon: '/logo.png',
     badge: '/logo.png',
-    tag: `textmatch-${payload.data?.type || 'notification'}-${Date.now()}`, // 一意なタグで重複防止
+    tag: `textmatch-${payload.data?.type || 'notification'}-${payload.data?.conversationId || payload.data?.bookId || payload.data?.recipientId || 'general'}`, // 関連IDベースで重複防止
     requireInteraction: false, // 自動で閉じるように変更
     actions: [
       {

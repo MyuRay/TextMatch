@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { AuthProvider } from "@/lib/useAuth" // ←パスが通っているかも確認
 import AddToHomeScreen from "@/components/add-to-home-screen"
+import NotificationPermissionPrompt from "@/components/notification-permission-prompt"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           {children}
           <AddToHomeScreen />
+          <NotificationPermissionPrompt />
         </AuthProvider>
       </body>
     </html>

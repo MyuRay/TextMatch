@@ -764,42 +764,45 @@ function ProfileCard({ user, userProfile }: { user: UserProfile, userProfile: Us
           </>
         ) : (
           <>
-            <div className="space-y-3">
-              <div className="flex items-center gap-4">
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
                 <Avatar className="w-16 h-16">
                   <AvatarImage src={user.avatarUrl || undefined} />
                   <AvatarFallback className="text-xl bg-primary/10 text-primary">
                     {getInitials(user.fullName)}
                   </AvatarFallback>
                 </Avatar>
-                <div>
+                <div className="text-center sm:text-left">
                   <p className="text-sm font-medium text-muted-foreground">プロフィール画像</p>
                   <p className="text-base">{user.avatarUrl ? "設定済み" : "未設定"}</p>
                 </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">名前</p>
-                <p className="text-base">{user.fullName}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">大学</p>
-                <p className="text-base">{user.university}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">学部・学科</p>
-                <p className="text-base">{user.department || "未設定"}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">学年</p>
-                <p className="text-base">{user.grade || "未設定"}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">メール</p>
-                <p className="text-base">{user.email}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">登録日</p>
-                <p className="text-base">{user.createdAt?.toDate?.()?.toLocaleDateString() || "不明"}</p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">名前</p>
+                  <p className="text-base break-words">{user.fullName}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">大学</p>
+                  <p className="text-base break-words">{user.university}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">学部・学科</p>
+                  <p className="text-base break-words">{user.department || "未設定"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">学年</p>
+                  <p className="text-base break-words">{user.grade || "未設定"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">メール</p>
+                  <p className="text-base break-all">{user.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">登録日</p>
+                  <p className="text-base">{user.createdAt?.toDate?.()?.toLocaleDateString() || "不明"}</p>
+                </div>
               </div>
             </div>
             

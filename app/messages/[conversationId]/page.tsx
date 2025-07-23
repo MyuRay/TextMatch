@@ -184,18 +184,11 @@ export default function ConversationPage() {
         console.error("メール通知エラー:", error)
       }
       
-      // プッシュ通知を送信
+      // 統合された通知を送信（プッシュ通知 + アプリ内通知）
       try {
-        await sendPushNotificationToUser(messageToSend)
+        await sendUnifiedNotification(messageToSend)
       } catch (error) {
-        console.error("プッシュ通知エラー:", error)
-      }
-      
-      // アプリ内通知を作成
-      try {
-        await createAppNotification()
-      } catch (error) {
-        console.error("アプリ内通知エラー:", error)
+        console.error("統合通知エラー:", error)
       }
       
       // メッセージ送信後、少し遅れてスクロール
@@ -258,7 +251,8 @@ export default function ConversationPage() {
     }
   }
 
-  const sendPushNotificationToUser = async (messageText: string) => {
+  // 統合通知関数（プッシュ通知 + アプリ内通知を同時実行し、重複を防ぐ）
+  const sendUnifiedNotification = async (messageText: string) => {
     try {
       if (!conversation || !textbook || !user) return
 
@@ -280,53 +274,39 @@ export default function ConversationPage() {
         ? messageText.substring(0, 30) + "..." 
         : messageText
 
-      // プッシュ通知を送信
-      await sendPushNotification(
-        recipientId,
-        `${senderName}からメッセージ`,
-        `${textbook.title}: ${messagePreview}`,
-        {
-          type: 'message',
-          conversationId: conversationId as string,
-          bookId: textbook.id,
-          actionUrl: `/messages/${conversationId}`
-        }
-      )
-    } catch (error) {
-      console.error("プッシュ通知送信エラー:", error)
-      // プッシュ通知エラーでもメッセージ送信は継続
-    }
-  }
-
-  const createAppNotification = async () => {
-    try {
-      if (!conversation || !textbook || !user) return
-
-      // 受信者を特定（送信者でない方）
-      let recipientId = null
-      if (conversation.buyerId === user.uid) {
-        recipientId = conversation.sellerId
-      } else if (conversation.sellerId === user.uid) {
-        recipientId = conversation.buyerId
+      // 通知データ
+      const notificationData = {
+        type: 'message',
+        conversationId: conversationId as string,
+        bookId: textbook.id,
+        bookTitle: textbook.title,
+        recipientId
       }
-      
-      if (!recipientId || recipientId === user.uid) return
-      
-      // 送信者の名前
-      const senderName = currentUserProfile.name || "ユーザー"
 
-      // アプリ内通知を作成
-      await createMessageNotification(
-        recipientId,
-        senderName,
-        textbook.title,
-        conversationId as string
-      )
+      // プッシュ通知とアプリ内通知を並行実行（ただし重複防止のためタグを共有）
+      await Promise.allSettled([
+        // プッシュ通知
+        sendPushNotification(
+          recipientId,
+          `${senderName}からメッセージ`,
+          `${textbook.title}: ${messagePreview}`,
+          notificationData
+        ),
+        // アプリ内通知
+        createMessageNotification(
+          recipientId,
+          senderName,
+          textbook.title,
+          conversationId as string
+        )
+      ])
+
     } catch (error) {
-      console.error("アプリ内通知作成エラー:", error)
-      // 通知作成エラーでもメッセージ送信は継続
+      console.error("統合通知送信エラー:", error)
+      // 通知エラーでもメッセージ送信は継続
     }
   }
+
 
   const handleStatusChange = async (newStatus: 'available' | 'sold') => {
     if (!user || !textbook || !conversation) return

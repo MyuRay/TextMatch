@@ -201,23 +201,23 @@ export default function SellerProfilePage() {
                     officialType={sellerProfile.officialType} 
                   />
                 </div>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    <span>{sellerProfile.university && sellerProfile.university.trim() !== '' ? sellerProfile.university : '大学:未設定'}</span>
+                    <MapPin className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{sellerProfile.university && sellerProfile.university.trim() !== '' ? sellerProfile.university : '大学:未設定'}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Package className="h-4 w-4" />
-                    <span>{sellerProfile.department && sellerProfile.department.trim() !== '' ? sellerProfile.department : '学部・学科:未設定'}</span>
+                    <Package className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{sellerProfile.department && sellerProfile.department.trim() !== '' ? sellerProfile.department : '学部・学科:未設定'}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <BookOpen className="h-4 w-4" />
-                    <span>{sellerProfile.grade && sellerProfile.grade.trim() !== '' ? sellerProfile.grade : '学年:未設定'}</span>
+                    <BookOpen className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{sellerProfile.grade && sellerProfile.grade.trim() !== '' ? sellerProfile.grade : '学年:未設定'}</span>
                   </div>
                   {sellerProfile.createdAt && (
                     <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      <span>登録日: {formatDate(sellerProfile.createdAt)}</span>
+                      <Calendar className="h-4 w-4 flex-shrink-0" />
+                      <span className="truncate">登録日: {formatDate(sellerProfile.createdAt)}</span>
                     </div>
                   )}
                 </div>
