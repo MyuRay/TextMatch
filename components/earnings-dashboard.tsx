@@ -215,8 +215,7 @@ export default function EarningsDashboard({ stripeAccountId }: EarningsDashboard
             <div className="space-y-3">
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="text-sm text-amber-800">
-                  <strong>⏱️ 出金タイミングについて：</strong> 初回売上は出金可能額への反映まで約1週間かかります。
-                  それ以降の売上は2日を目安に反映されます。
+                  <strong>出金タイミングについて：</strong> 出金可能額への反映まで約1週間かかります。
                 </p>
               </div>
               

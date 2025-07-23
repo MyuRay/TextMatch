@@ -472,6 +472,7 @@ function ProfileCard({ user, userProfile }: { user: UserProfile, userProfile: Us
   const [editData, setEditData] = useState({
     fullName: user.fullName,
     university: user.university,
+    department: user.department || "",
     grade: user.grade || "",
   })
   const [isLoading, setIsLoading] = useState(false)
@@ -578,6 +579,7 @@ function ProfileCard({ user, userProfile }: { user: UserProfile, userProfile: Us
         ...user,
         fullName: editData.fullName,
         university: editData.university,
+        department: editData.department,
         grade: editData.grade,
         avatarUrl: newAvatarUrl,
       }, { merge: true })
@@ -600,6 +602,7 @@ function ProfileCard({ user, userProfile }: { user: UserProfile, userProfile: Us
     setEditData({
       fullName: user.fullName,
       university: user.university,
+      department: user.department || "",
       grade: user.grade || "",
     })
     setAvatarFile(null)
@@ -719,6 +722,14 @@ function ProfileCard({ user, userProfile }: { user: UserProfile, userProfile: Us
               </Popover>
             </div>
             <div className="space-y-2">
+              <label className="text-sm font-medium">学部・学科（任意）</label>
+              <Input
+                placeholder="例：工学部情報工学科、文学部英語学科"
+                value={editData.department}
+                onChange={(e) => setEditData(prev => ({ ...prev, department: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
               <label className="text-sm font-medium">学年</label>
               <Select value={editData.grade} onValueChange={(value) => setEditData(prev => ({ ...prev, grade: value }))}>
                 <SelectTrigger>
@@ -775,6 +786,10 @@ function ProfileCard({ user, userProfile }: { user: UserProfile, userProfile: Us
                 <p className="text-base">{user.university}</p>
               </div>
               <div>
+                <p className="text-sm font-medium text-muted-foreground">学部・学科</p>
+                <p className="text-base">{user.department || "未設定"}</p>
+              </div>
+              <div>
                 <p className="text-sm font-medium text-muted-foreground">学年</p>
                 <p className="text-base">{user.grade || "未設定"}</p>
               </div>
@@ -800,9 +815,14 @@ function ProfileCard({ user, userProfile }: { user: UserProfile, userProfile: Us
                 <p className="text-sm font-medium text-muted-foreground">決済設定（Stripe Connect）</p>
                 <div className="flex items-center gap-2 mt-1">
                   {userProfile?.stripeAccountId ? (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="default" className="bg-green-600">設定済み</Badge>
-                      <span className="text-sm text-muted-foreground">決済を受け取ることができます</span>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="default" className="bg-green-600">設定済み</Badge>
+                        <span className="text-sm text-muted-foreground">決済を受け取ることができます</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        出金可能額への反映まで約1週間かかります。
+                      </p>
                     </div>
                   ) : (
                     <div className="flex flex-col gap-2">
@@ -1004,7 +1024,7 @@ function BooksListCard({ title, books, isPurchase = false, isEditable = false, i
                 <h3 className="font-bold text-sm md:text-lg truncate">{book.title}</h3>
                 <p className="text-xs md:text-sm text-muted-foreground truncate">{book.author}</p>
                 <p className="text-xs md:text-sm">価格：¥{book.price?.toLocaleString()}</p>
-                {book.status === 'sold' && <p className="text-xs md:text-sm text-red-500">売切済</p>}
+                {(book.status === 'sold' || book.transactionStatus === 'paid') && <p className="text-xs md:text-sm text-red-500">売切済</p>}
                 {book.status === 'reserved' && <p className="text-xs md:text-sm text-yellow-500">予約済</p>}
                 {book.status === 'available' && isEditable && <p className="text-xs md:text-sm text-green-500">出品中</p>}
                 {isPurchase && <p className="text-xs md:text-sm">購入日：{formatPurchaseDate(book.purchasedAt)}</p>}

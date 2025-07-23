@@ -215,7 +215,7 @@ export default function FavoritesPage() {
                           <span>お気に入り登録: {formatDate(favorite.createdAt)}</span>
                         </div>
 
-                        {favorite.textbook?.status === 'sold' && (
+                        {(favorite.textbook?.status === 'sold' || favorite.textbook?.transactionStatus === 'paid') && (
                           <div className="flex items-center justify-center py-2">
                             <Badge variant="secondary" className="text-center">
                               売り切れ

@@ -53,6 +53,7 @@ export default function RegisterPage() {
     nickname: "",
     email: "",
     university: "",
+    department: "",
     grade: "",
     password: "",
     confirmPassword: "",
@@ -136,6 +137,7 @@ export default function RegisterPage() {
     if (emailError) newErrors.email = emailError
     
     if (!formData.university) newErrors.university = "大学名を入力してください"
+    if (!formData.grade) newErrors.grade = "学年を選択してください"
     if (!formData.password) newErrors.password = "パスワードを入力してください"
     else if (formData.password.length < 8) newErrors.password = "パスワードは8文字以上で入力してください"
     if (!formData.confirmPassword) newErrors.confirmPassword = "パスワードを再入力してください"
@@ -178,12 +180,13 @@ export default function RegisterPage() {
         }
       }
 
-      // Firestoreにプロフィール保存 - 表示名をfullNameに保存
+      // Firestoreにプロフィール保存 - 本名をfullNameに、表示名をnicknameに保存
       await saveUserProfile(user.uid, {
-        fullName: formData.nickname,
+        fullName: formData.fullName,
         nickname: formData.nickname,
         email: formData.email,
         university: formData.university,
+        department: formData.department,
         grade: formData.grade,
         avatarUrl: avatarUrl,
         emailVerified: false, // 初期状態は未認証
@@ -390,10 +393,10 @@ export default function RegisterPage() {
 
 
               <div className="space-y-2">
-                <Label htmlFor="grade">学年（任意）</Label>
+                <Label htmlFor="grade">学年 *</Label>
                 <Select value={formData.grade} onValueChange={(value) => handleSelectChange('grade', value)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="学年を選択（任意）" />
+                    <SelectValue placeholder="学年を選択してください" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="学部1年">学部1年</SelectItem>
@@ -412,6 +415,22 @@ export default function RegisterPage() {
                     <SelectItem value="その他">その他</SelectItem>
                   </SelectContent>
                 </Select>
+                {errors.grade && <p className="text-sm text-destructive">{errors.grade}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="department">学部・学科（任意）</Label>
+                <Input 
+                  id="department" 
+                  name="department" 
+                  placeholder="例：工学部情報工学科、文学部英語学科" 
+                  value={formData.department} 
+                  onChange={handleChange} 
+                />
+                <p className="text-xs text-muted-foreground">
+                  学部・学科名を入力してください（任意）
+                </p>
+                {errors.department && <p className="text-sm text-destructive">{errors.department}</p>}
               </div>
 
               <div className="space-y-2">

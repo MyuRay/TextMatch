@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft, Calendar, MapPin, MessageCircle, User, BookOpen, Heart, CheckCircle, RotateCcw, CreditCard } from "lucide-react"
+import { ArrowLeft, Calendar, MapPin, MessageCircle, User, BookOpen, Heart, CheckCircle, RotateCcw, CreditCard, Edit } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -219,7 +219,7 @@ export default function TextbookDetailPage() {
                 </Badge>
                 <div className="flex gap-2">
                   <Badge variant="secondary">{conditionMap[textbook.condition] || textbook.condition}</Badge>
-                  {textbook.status === 'sold' && (
+                  {(textbook.status === 'sold' || textbook.transactionStatus === 'paid') && (
                     <Badge variant="destructive">売切済</Badge>
                   )}
                   {textbook.status === 'reserved' && (
@@ -230,10 +230,10 @@ export default function TextbookDetailPage() {
               <h1 className="text-2xl md:text-3xl font-bold">{textbook.title}</h1>
               <p className="text-lg text-muted-foreground mt-1">{textbook.author}</p>
               <div className="flex items-center gap-4 mt-4">
-                <p className={`text-2xl font-bold ${textbook.status === 'sold' ? 'line-through text-muted-foreground' : ''}`}>
+                <p className={`text-2xl font-bold ${(textbook.status === 'sold' || textbook.transactionStatus === 'paid') ? 'line-through text-muted-foreground' : ''}`}>
                   ¥{textbook.price?.toLocaleString?.()}
                 </p>
-                {textbook.status === 'sold' && (
+                {(textbook.status === 'sold' || textbook.transactionStatus === 'paid') && (
                   <Badge variant="destructive">売切済</Badge>
                 )}
               </div>
@@ -285,7 +285,7 @@ export default function TextbookDetailPage() {
               {/* ステータス表示 */}
               {user && user.uid !== textbook?.userId && (
                 <>
-                  {textbook?.status === 'sold' ? (
+                  {(textbook?.status === 'sold' || textbook?.transactionStatus === 'paid') ? (
                     <div className="w-full p-4 bg-muted rounded-lg text-center">
                       <Badge variant="destructive" className="mb-2">売切済</Badge>
                       <p className="text-sm text-muted-foreground">この教科書はすでに販売終了しています</p>
@@ -309,37 +309,52 @@ export default function TextbookDetailPage() {
               {user && user.uid === textbook?.userId && (
                 <div className="w-full p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm font-medium text-blue-800 mb-3">出品者メニュー</p>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    {textbook?.status === 'sold' ? (
-                      textbook?.transactionStatus === 'paid' || textbook?.transactionStatus === 'completed' ? (
-                        <Button
-                          variant="secondary"
-                          className="flex-1 bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed"
-                          disabled={true}
-                        >
-                          <CheckCircle className="mr-2 h-4 w-4" />
-                          決済完了済み
-                        </Button>
+                  <div className="space-y-2">
+                    {/* 商品編集ボタン */}
+                    <Button
+                      variant="outline"
+                      className="w-full border-blue-200 text-blue-700 hover:bg-blue-50"
+                      asChild
+                    >
+                      <Link href={`/edit/${textbook?.id}`}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        商品情報を編集
+                      </Link>
+                    </Button>
+                    
+                    {/* ステータス変更ボタン */}
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      {(textbook?.status === 'sold' || textbook?.transactionStatus === 'paid') ? (
+                        textbook?.transactionStatus === 'paid' || textbook?.transactionStatus === 'completed' ? (
+                          <Button
+                            variant="secondary"
+                            className="flex-1 bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed"
+                            disabled={true}
+                          >
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            決済完了済み
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            className="flex-1 border-green-200 text-green-700 hover:bg-green-50"
+                            onClick={() => handleStatusChange('available')}
+                          >
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            出品中に戻す
+                          </Button>
+                        )
                       ) : (
                         <Button
                           variant="outline"
-                          className="flex-1 border-green-200 text-green-700 hover:bg-green-50"
-                          onClick={() => handleStatusChange('available')}
+                          className="flex-1 border-red-200 text-red-700 hover:bg-red-50"
+                          onClick={() => handleStatusChange('sold')}
                         >
-                          <RotateCcw className="mr-2 h-4 w-4" />
-                          出品中に戻す
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          成約済みにする
                         </Button>
-                      )
-                    ) : (
-                      <Button
-                        variant="outline"
-                        className="flex-1 border-red-200 text-red-700 hover:bg-red-50"
-                        onClick={() => handleStatusChange('sold')}
-                      >
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        成約済みにする
-                      </Button>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -351,7 +366,7 @@ export default function TextbookDetailPage() {
                   <Button
                     className="flex-1"
                     variant="outline"
-                    disabled={textbook?.status === 'sold'}
+                    disabled={(textbook?.status === 'sold' || textbook?.transactionStatus === 'paid')}
                     onClick={async () => {
                       try {
                         console.log("連絡ボタンクリック - ユーザー:", user?.uid)
@@ -385,7 +400,7 @@ export default function TextbookDetailPage() {
                     }}
                   >
                     <MessageCircle className="mr-2 h-4 w-4" />
-                    {textbook?.status === 'sold' ? '売切済' : '出品者に連絡する'}
+                    {(textbook?.status === 'sold' || textbook?.transactionStatus === 'paid') ? '売切済' : '出品者に連絡する'}
                   </Button>
                   <Button 
                     variant="outline" 
@@ -449,7 +464,7 @@ export default function TextbookDetailPage() {
                             {book.views || 0}
                           </div>
                           {/* 取引状態バッジ */}
-                          {book.status === 'sold' && (
+                          {(book.status === 'sold' || book.transactionStatus === 'paid') && (
                             <div className="absolute top-2 right-2">
                               <span className="bg-red-500 text-white text-xs px-2 py-1 rounded">
                                 売切
@@ -494,7 +509,7 @@ export default function TextbookDetailPage() {
                               {book.views || 0}
                             </div>
                             {/* 取引状態バッジ */}
-                            {book.status === 'sold' && (
+                            {(book.status === 'sold' || book.transactionStatus === 'paid') && (
                               <div className="absolute top-2 right-2">
                                 <span className="bg-red-500 text-white text-xs px-2 py-1 rounded">
                                   売切

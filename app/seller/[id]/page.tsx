@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { collection, getDocs, query, where } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
-import { getUserProfile, Textbook } from "@/lib/firestore"
+import { getUserProfile, getFullUserProfile, Textbook } from "@/lib/firestore"
 import { formatDate } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,6 +21,7 @@ interface SellerProfile {
   name: string
   email?: string
   university?: string
+  department?: string
   avatarUrl?: string
   isOfficial?: boolean
   officialType?: 'admin' | 'support' | 'team'
@@ -45,14 +46,21 @@ export default function SellerProfilePage() {
         setLoading(true)
         
         // 出品者のプロフィール情報を取得
-        const profile = await getUserProfile(sellerId)
+        const profile = await getFullUserProfile(sellerId)
         if (!profile) {
           setError("出品者が見つかりませんでした")
           return
         }
         setSellerProfile({
-          ...profile,
-          officialType: profile.officialType as 'admin' | 'support' | 'team' | undefined
+          name: profile.nickname || profile.fullName || "名無し",
+          email: profile.email,
+          university: profile.university,
+          department: profile.department,
+          grade: profile.grade,
+          avatarUrl: profile.avatarUrl,
+          isOfficial: profile.isOfficial || false,
+          officialType: profile.officialType as 'admin' | 'support' | 'team' | undefined,
+          createdAt: profile.createdAt
         })
 
         // 販売中の商品を取得
@@ -194,18 +202,18 @@ export default function SellerProfilePage() {
                   />
                 </div>
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  {sellerProfile.university && sellerProfile.university.trim() !== '' && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="h-4 w-4" />
-                      <span>{sellerProfile.university}</span>
-                    </div>
-                  )}
-                  {sellerProfile.grade && sellerProfile.grade.trim() !== '' && (
-                    <div className="flex items-center gap-1">
-                      <BookOpen className="h-4 w-4" />
-                      <span>{sellerProfile.grade}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    <span>{sellerProfile.university && sellerProfile.university.trim() !== '' ? sellerProfile.university : '大学:未設定'}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Package className="h-4 w-4" />
+                    <span>{sellerProfile.department && sellerProfile.department.trim() !== '' ? sellerProfile.department : '学部・学科:未設定'}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <BookOpen className="h-4 w-4" />
+                    <span>{sellerProfile.grade && sellerProfile.grade.trim() !== '' ? sellerProfile.grade : '学年:未設定'}</span>
+                  </div>
                   {sellerProfile.createdAt && (
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />

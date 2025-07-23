@@ -54,7 +54,7 @@ export default function MarketplacePage() {
     }
 
     if (!showSold) {
-      filtered = filtered.filter(book => book.status !== 'sold')
+      filtered = filtered.filter(book => book.status !== 'sold' && book.transactionStatus !== 'paid')
     }
 
     if (sameUniversityOnly && userProfile?.university) {

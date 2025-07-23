@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 
 export function TextbookCard({ textbook }: { textbook: any }) {
-  const isSold = textbook.status === 'sold'
+  const isSold = textbook.status === 'sold' || textbook.transactionStatus === 'paid'
   const isReserved = textbook.status === 'reserved'
   
   return (

@@ -46,6 +46,7 @@ export interface UserProfile {
   email: string
   studentId?: string
   university: string
+  department?: string      // 学部・学科（新規追加）
   grade?: string           // 学年（新規追加）
   nickname?: string
   avatarUrl?: string

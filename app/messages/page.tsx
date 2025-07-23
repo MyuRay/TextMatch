@@ -299,8 +299,8 @@ export default function MessagesPage() {
                                         📝 {conversation.textbook.author}
                                       </p>
                                     )}
-                                    <Badge variant={conversation.textbook.status === 'sold' ? 'destructive' : 'secondary'} className="text-xs">
-                                      {conversation.textbook.status === 'sold' ? '売切' : '販売中'}
+                                    <Badge variant={(conversation.textbook.status === 'sold' || conversation.textbook.transactionStatus === 'paid') ? 'destructive' : 'secondary'} className="text-xs">
+                                      {(conversation.textbook.status === 'sold' || conversation.textbook.transactionStatus === 'paid') ? '売切' : '販売中'}
                                     </Badge>
                                   </div>
                                 </div>

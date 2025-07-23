@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/lib/useAuth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -40,6 +41,7 @@ export default function ConversationPage() {
   const [conversation, setConversation] = useState<any>(null)
   const [otherUser, setOtherUser] = useState<{name: string, avatarUrl?: string, isOfficial?: boolean, officialType?: string}>({name: ""})
   const [currentUserProfile, setCurrentUserProfile] = useState<{name: string, avatarUrl?: string, isOfficial?: boolean, officialType?: string}>({name: ""})
+  const [otherUserId, setOtherUserId] = useState<string>("")
   const [textbook, setTextbook] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [showPaymentConfirm, setShowPaymentConfirm] = useState(false)
@@ -79,6 +81,7 @@ export default function ConversationPage() {
           getTextbookById(convData.bookId)
         ])
         
+        setOtherUserId(otherUserId)
         setOtherUser(otherUserProfile || {name: "不明なユーザー"})
         setCurrentUserProfile(currentProfile || {name: "あなた"})
         setTextbook(textbookData)
@@ -156,10 +159,19 @@ export default function ConversationPage() {
   const handleSend = async () => {
     if (!newMessage.trim() || !user) return
 
+    const messageToSend = newMessage
+    setNewMessage("") // メッセージ送信前に入力欄をクリア
+    
+    // Textareaの高さをリセット
+    const textarea = document.querySelector('textarea')
+    if (textarea) {
+      textarea.style.height = 'auto'
+    }
+
     try {
       const messagesRef = collection(db, "conversations", conversationId as string, "messages")
       await addDoc(messagesRef, {
-        text: newMessage,
+        text: messageToSend,
         senderId: user.uid,
         createdAt: serverTimestamp(),
         isRead: false,
@@ -167,14 +179,14 @@ export default function ConversationPage() {
       
       // メール通知を送信
       try {
-        await sendMessageNotification()
+        await sendMessageNotification(messageToSend)
       } catch (error) {
         console.error("メール通知エラー:", error)
       }
       
       // プッシュ通知を送信
       try {
-        await sendPushNotificationToUser()
+        await sendPushNotificationToUser(messageToSend)
       } catch (error) {
         console.error("プッシュ通知エラー:", error)
       }
@@ -186,8 +198,6 @@ export default function ConversationPage() {
         console.error("アプリ内通知エラー:", error)
       }
       
-      setNewMessage("")
-      
       // メッセージ送信後、少し遅れてスクロール
       setTimeout(() => {
         scrollToBottom()
@@ -195,10 +205,11 @@ export default function ConversationPage() {
     } catch (error) {
       console.error("メッセージ送信エラー:", error)
       alert("メッセージの送信に失敗しました")
+      setNewMessage(messageToSend) // エラー時は元のメッセージを復元
     }
   }
 
-  const sendMessageNotification = async () => {
+  const sendMessageNotification = async (messageText: string) => {
     try {
       if (!conversation || !textbook || !user) return
 
@@ -224,9 +235,9 @@ export default function ConversationPage() {
       const senderName = currentUserProfile.name || "ユーザー"
 
       // メッセージプレビュー（最初の50文字）
-      const messagePreview = newMessage.length > 50 
-        ? newMessage.substring(0, 50) + "..." 
-        : newMessage
+      const messagePreview = messageText.length > 50 
+        ? messageText.substring(0, 50) + "..." 
+        : messageText
 
       // メール内容を作成
       const emailNotification = createMessageNotificationEmail(
@@ -247,7 +258,7 @@ export default function ConversationPage() {
     }
   }
 
-  const sendPushNotificationToUser = async () => {
+  const sendPushNotificationToUser = async (messageText: string) => {
     try {
       if (!conversation || !textbook || !user) return
 
@@ -265,9 +276,9 @@ export default function ConversationPage() {
       const senderName = currentUserProfile.name || "ユーザー"
       
       // メッセージプレビュー（最初の30文字）
-      const messagePreview = newMessage.length > 30 
-        ? newMessage.substring(0, 30) + "..." 
-        : newMessage
+      const messagePreview = messageText.length > 30 
+        ? messageText.substring(0, 30) + "..." 
+        : messageText
 
       // プッシュ通知を送信
       await sendPushNotification(
@@ -464,19 +475,27 @@ export default function ConversationPage() {
     setPaymentDialogOpen(false)
     
     try {
+      console.log("🔄 決済完了処理開始")
+      console.log("教科書ID:", textbook.id)
+      console.log("購入者ID:", conversation.buyerId)
+      
       // 会話の取引状態をpaidに更新
       const conversationRef = doc(db, "conversations", conversationId as string)
       await updateDoc(conversationRef, {
         transactionStatus: 'paid', // 決済完了
         paidAt: serverTimestamp(),
       })
+      console.log("✅ 会話ステータス更新完了")
       
-      // 教科書の取引状態もpaidに更新
+      // 教科書の状態をsoldに更新し、取引状態もpaidに更新
       const textbookRef = doc(db, "books", textbook.id)
       await updateDoc(textbookRef, {
+        status: 'sold', // 決済完了時に売り切れにする
+        buyerId: conversation.buyerId, // 購入者IDを設定
         transactionStatus: 'paid', // 決済完了
         paidAt: serverTimestamp(),
       })
+      console.log("✅ 教科書ステータス更新完了 - status: sold")
       
       // 会話の状態を更新
       setConversation((prev: any) => prev ? { 
@@ -487,13 +506,20 @@ export default function ConversationPage() {
       // 教科書の状態を更新
       setTextbook((prev: any) => prev ? { 
         ...prev, 
+        status: 'sold',
+        buyerId: conversation.buyerId,
         transactionStatus: 'paid'
       } : null)
+      console.log("✅ ローカル状態更新完了")
       
-      // 決済完了メッセージを自動送信
+      // 決済完了メッセージを自動送信（最新のニックネームを取得）
+      const currentUserDoc = await getDoc(doc(db, "users", user!.uid))
+      const currentUserData = currentUserDoc.exists() ? currentUserDoc.data() : null
+      const displayName = currentUserData?.nickname || currentUserData?.fullName || '購入者'
+      
       const messagesRef = collection(db, "conversations", conversationId as string, "messages")
       await addDoc(messagesRef, {
-        text: `💳 ${user?.displayName || '購入者'}さんが決済を完了しました。商品の受け渡しを行ってください。`,
+        text: `💳 ${displayName}さんが決済を完了しました。商品の受け渡しを行ってください。`,
         senderId: user!.uid,
         createdAt: serverTimestamp(),
         isRead: false,
@@ -553,10 +579,14 @@ export default function ConversationPage() {
         transactionStatus: 'completed'
       } : null)
       
-      // 受取完了メッセージを自動送信
+      // 受取完了メッセージを自動送信（最新のニックネームを取得）
+      const currentUserDoc = await getDoc(doc(db, "users", user.uid))
+      const currentUserData = currentUserDoc.exists() ? currentUserDoc.data() : null
+      const displayName = currentUserData?.nickname || currentUserData?.fullName || '購入者'
+      
       const messagesRef = collection(db, "conversations", conversationId as string, "messages")
       await addDoc(messagesRef, {
-        text: `✅ ${user.displayName || '購入者'}さんが商品を受け取りました。取引完了です！お疲れ様でした。`,
+        text: `✅ ${displayName}さんが商品を受け取りました。取引完了です！お疲れ様でした。\n\n📝 サービス向上のため、アンケートにご協力ください：\nhttps://docs.google.com/forms/d/e/1FAIpQLSdoNDHtDrD6pjIDhqL7sed1xCUe-7wtDcNGijirRfw3vZVpMg/viewform?usp=header`,
         senderId: user.uid,
         createdAt: serverTimestamp(),
         isRead: false,
@@ -606,12 +636,14 @@ export default function ConversationPage() {
             </Button>
             
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <Avatar className="h-10 w-10 flex-shrink-0">
-                <AvatarImage src={otherUser?.avatarUrl || "/placeholder.svg"} />
-                <AvatarFallback className="bg-primary/10 text-primary">
-                  {otherUser?.name?.charAt(0) || "U"}
-                </AvatarFallback>
-              </Avatar>
+              <Link href={`/seller/${otherUserId}`}>
+                <Avatar className="h-10 w-10 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity">
+                  <AvatarImage src={otherUser?.avatarUrl || "/placeholder.svg"} />
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {otherUser?.name?.charAt(0) || "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 min-w-0">
@@ -908,7 +940,7 @@ export default function ConversationPage() {
                 return (
                   <div key={msg.id} className="flex justify-center my-4">
                     <div className="bg-green-50 border border-green-200 rounded-lg p-3 max-w-[80%]">
-                      <p className="text-sm text-green-800 text-center font-medium">{msg.text}</p>
+                      <p className="text-sm text-green-800 text-center font-medium whitespace-pre-wrap">{msg.text}</p>
                       <div className="flex items-center justify-center gap-1 mt-1 text-xs text-green-600">
                         <Clock className="h-3 w-3" />
                         {msg.createdAt?.toDate?.() ? (
@@ -931,12 +963,14 @@ export default function ConversationPage() {
                   className={`flex gap-2 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
                 >
                   {!isCurrentUser && !msg.isSystemMessage && (
-                    <Avatar className="h-8 w-8 mt-1">
-                      <AvatarImage src={userProfile?.avatarUrl || "/placeholder.svg"} />
-                      <AvatarFallback className="bg-muted text-xs">
-                        {userProfile?.name?.charAt(0) || "U"}
-                      </AvatarFallback>
-                    </Avatar>
+                    <Link href={`/seller/${otherUserId}`}>
+                      <Avatar className="h-8 w-8 mt-1 cursor-pointer hover:opacity-80 transition-opacity">
+                        <AvatarImage src={userProfile?.avatarUrl || "/placeholder.svg"} />
+                        <AvatarFallback className="bg-muted text-xs">
+                          {userProfile?.name?.charAt(0) || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Link>
                   )}
                   
                   {msg.isSystemMessage && (
@@ -965,7 +999,7 @@ export default function ConversationPage() {
                           : "bg-white border shadow-sm"
                       }`}
                     >
-                      <p className="text-sm">{msg.text}</p>
+                      <p className="text-sm text-left whitespace-pre-wrap">{msg.text}</p>
                       <div className={`flex items-center gap-1 mt-1 text-xs ${
                         msg.isSystemMessage 
                           ? 'text-blue-600 justify-start'
@@ -987,12 +1021,14 @@ export default function ConversationPage() {
                   </div>
                   
                   {isCurrentUser && !msg.isSystemMessage && (
-                    <Avatar className="h-8 w-8 mt-1">
-                      <AvatarImage src={userProfile?.avatarUrl || "/placeholder.svg"} />
-                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                        {userProfile?.name?.charAt(0) || "U"}
-                      </AvatarFallback>
-                    </Avatar>
+                    <Link href="/mypage">
+                      <Avatar className="h-8 w-8 mt-1 cursor-pointer hover:opacity-80 transition-opacity">
+                        <AvatarImage src={userProfile?.avatarUrl || "/placeholder.svg"} />
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                          {userProfile?.name?.charAt(0) || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Link>
                   )}
                 </div>
               )
@@ -1007,14 +1043,24 @@ export default function ConversationPage() {
       <footer className="bg-white border-t flex-shrink-0">
         <div className="container mx-auto px-4 py-2">
           <div className="flex gap-2 max-w-3xl mx-auto">
-            <Input
+            <Textarea
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="メッセージを入力..."
-              onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-              className="flex-1 h-9"
+              className="flex-1 min-h-[36px] max-h-32 resize-none"
+              rows={1}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement
+                target.style.height = 'auto'
+                target.style.height = Math.min(target.scrollHeight, 128) + 'px'
+              }}
             />
-            <Button onClick={handleSend} disabled={!newMessage.trim()} size="sm" className="h-9">
+            <Button 
+              onClick={handleSend} 
+              disabled={!newMessage.trim()} 
+              size="sm" 
+              className="min-h-[36px] self-end px-3"
+            >
               <Send className="h-4 w-4" />
             </Button>
           </div>
