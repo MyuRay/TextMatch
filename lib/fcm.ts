@@ -245,14 +245,12 @@ export function setupForegroundNotifications(onNotificationReceived?: (payload: 
       onNotificationReceived(payload)
     }
 
-    // フォアグラウンド時はService Workerが動かないので、手動で通知表示
-    if (payload.notification && document.visibilityState === 'visible') {
-      showBrowserNotification(
-        payload.notification.title || "新しい通知",
-        payload.notification.body || "",
-        payload.data
-      )
-    }
+    // フォアグラウンド時は通知表示をService Workerに任せる
+    // 重複を避けるためフォアグラウンド通知は無効化
+    console.log("フォアグラウンド通知は Service Worker に委譲します")
+    
+    // アプリ内での処理のみ実行（UI更新など）
+    // 実際の通知表示はService Workerが担当
   })
 }
 
@@ -266,15 +264,17 @@ function showBrowserNotification(title: string, body: string, data?: any) {
   }
 
   try {
-    // 重複防止のため一意なタグを生成
-    const uniqueTag = `textmatch-fg-${Date.now()}`
+    // 重複防止のため一意なタグを生成（同じメッセージには同じタグを使用）
+    const messageId = data?.conversationId || data?.bookId || data?.recipientId || 'general'
+    const uniqueTag = `textmatch-fg-${data?.type || 'notification'}-${messageId}`
     
     // 最小限のオプションでブラウザ通知を作成
     const options = {
       body: body,
       icon: '/logo.png',
       tag: uniqueTag,
-      requireInteraction: false // 自動で閉じるように
+      requireInteraction: false, // 自動で閉じるように
+      silent: true // 音を鳴らさない（Service Workerと重複時のため）
       // actions は削除（フォアグラウンド通知では不要）
     }
 

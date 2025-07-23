@@ -63,18 +63,11 @@ export const setupForegroundMessageListener = () => {
   onMessage(messaging, (payload) => {
     console.log('フォアグラウンドでメッセージを受信:', payload)
     
-    // 通知を表示
-    if (payload.notification) {
-      const { title, body, icon } = payload.notification
-      
-      if (Notification.permission === 'granted') {
-        new Notification(title || '新着通知', {
-          body: body || '',
-          icon: icon || '/logo.png',
-          tag: 'firebase-notification'
-        })
-      }
-    }
+    // フォアグラウンド時の通知表示は無効化（重複防止）
+    // Service Workerが全ての通知を処理します
+    console.log('通知表示は Service Worker に委譲します')
+    
+    // アプリ内処理のみ実行（必要に応じて状態更新など）
   })
 }
 

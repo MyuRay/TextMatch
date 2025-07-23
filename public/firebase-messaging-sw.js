@@ -15,16 +15,19 @@ firebase.initializeApp(firebaseConfig);
 
 const messaging = firebase.messaging();
 
-// バックグラウンドメッセージの処理
+// バックグラウンドメッセージ（全ての通知）の処理
 messaging.onBackgroundMessage(function(payload) {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  console.log('[firebase-messaging-sw.js] Received message ', payload);
+  console.log('[firebase-messaging-sw.js] Visibility state:', document?.visibilityState || 'unknown');
   
   const notificationTitle = payload.notification?.title || payload.data?.title || 'TextMatch';
+  const notificationTag = `textmatch-${payload.data?.type || 'notification'}-${payload.data?.conversationId || payload.data?.bookId || payload.data?.recipientId || 'general'}`;
+  
   const notificationOptions = {
-    body: payload.notification?.body || payload.data?.body || '新しい通知があります',
+    body: payload.notification?.body || payload.data?.body || '新しい通知があります', 
     icon: '/logo.png',
     badge: '/logo.png',
-    tag: `textmatch-${payload.data?.type || 'notification'}-${payload.data?.conversationId || payload.data?.bookId || payload.data?.recipientId || 'general'}`, // 関連IDベースで重複防止
+    tag: notificationTag, // 関連IDベースで重複防止
     requireInteraction: false, // 自動で閉じるように変更
     actions: [
       {
@@ -39,6 +42,7 @@ messaging.onBackgroundMessage(function(payload) {
     data: payload.data || {}
   };
 
+  console.log('[firebase-messaging-sw.js] Showing notification with tag:', notificationTag);
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
