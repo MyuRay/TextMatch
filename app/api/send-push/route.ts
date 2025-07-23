@@ -54,15 +54,18 @@ export async function POST(request: NextRequest) {
     }
 
     // 受信者のFCMトークンを取得
+    console.log(`🔍 FCMトークン取得開始 - ユーザーID: ${recipientId}`)
     const fcmToken = await getUserFCMToken(recipientId)
     
     if (!fcmToken) {
-      console.log(`ユーザー ${recipientId} のFCMトークンが見つかりません`)
+      console.log(`❌ ユーザー ${recipientId} のFCMトークンが見つかりません`)
       return NextResponse.json(
         { error: "FCMトークンが見つかりません" },
         { status: 404 }
       )
     }
+    
+    console.log(`✅ FCMトークン取得成功 - ユーザーID: ${recipientId}, Token: ${fcmToken.substring(0, 20)}...`)
 
     // プッシュ通知メッセージを構築
     const message = {
@@ -100,9 +103,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Firebase Admin SDKでプッシュ通知を送信
+    console.log(`📤 プッシュ通知送信開始 - ユーザーID: ${recipientId}`)
+    console.log(`📋 メッセージ内容:`, {
+      title: message.notification.title,
+      body: message.notification.body,
+      tag: message.data?.conversationId || message.data?.bookId || 'no-tag'
+    })
+    
     const response = await admin.messaging().send(message)
     
-    console.log("プッシュ通知送信成功:", response)
+    console.log(`✅ プッシュ通知送信成功 - MessageID: ${response}`)
+    console.log(`🎯 送信対象: ${recipientId}, Token: ${fcmToken.substring(0, 20)}...`)
     
     return NextResponse.json({
       success: true,

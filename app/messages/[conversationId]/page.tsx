@@ -156,9 +156,14 @@ export default function ConversationPage() {
     scrollToBottom()
   }, [messages])
 
-  const handleSend = async () => {
-    if (!newMessage.trim() || !user) return
+  const [isSending, setIsSending] = useState(false)
 
+  const handleSend = async () => {
+    if (!newMessage.trim() || !user || isSending) return
+
+    console.log("🔄 メッセージ送信開始...")
+    setIsSending(true)
+    
     const messageToSend = newMessage
     setNewMessage("") // メッセージ送信前に入力欄をクリア
     
@@ -195,10 +200,15 @@ export default function ConversationPage() {
       setTimeout(() => {
         scrollToBottom()
       }, 100)
+      
+      console.log("✅ メッセージ送信完了")
     } catch (error) {
-      console.error("メッセージ送信エラー:", error)
+      console.error("❌ メッセージ送信エラー:", error)
       alert("メッセージの送信に失敗しました")
       setNewMessage(messageToSend) // エラー時は元のメッセージを復元
+    } finally {
+      setIsSending(false) // 送信状態を解除
+      console.log("🔓 送信ロック解除")
     }
   }
 
@@ -253,6 +263,9 @@ export default function ConversationPage() {
 
   // 統合通知関数（プッシュ通知 + アプリ内通知を同時実行し、重複を防ぐ）
   const sendUnifiedNotification = async (messageText: string) => {
+    const callId = Date.now()
+    console.log(`🔔 [${callId}] 統合通知開始 - メッセージ: "${messageText.substring(0, 20)}..."`)
+    
     try {
       if (!conversation || !textbook || !user) return
 
@@ -265,6 +278,8 @@ export default function ConversationPage() {
       }
       
       if (!recipientId || recipientId === user.uid) return
+      
+      console.log(`📤 [${callId}] 送信先: ${recipientId}, 送信者: ${user.uid}`)
       
       // 送信者の名前
       const senderName = currentUserProfile.name || "ユーザー"
@@ -284,7 +299,9 @@ export default function ConversationPage() {
       }
 
       // プッシュ通知とアプリ内通知を並行実行（ただし重複防止のためタグを共有）
-      await Promise.allSettled([
+      console.log(`🚀 [${callId}] プッシュ通知 & アプリ内通知送信開始`)
+      
+      const results = await Promise.allSettled([
         // プッシュ通知
         sendPushNotification(
           recipientId,
@@ -300,9 +317,11 @@ export default function ConversationPage() {
           conversationId as string
         )
       ])
+      
+      console.log(`✅ [${callId}] 通知送信完了 - 結果:`, results.map(r => r.status))
 
     } catch (error) {
-      console.error("統合通知送信エラー:", error)
+      console.error(`❌ [${callId}] 統合通知送信エラー:`, error)
       // 通知エラーでもメッセージ送信は継続
     }
   }
@@ -1037,11 +1056,15 @@ export default function ConversationPage() {
             />
             <Button 
               onClick={handleSend} 
-              disabled={!newMessage.trim()} 
+              disabled={!newMessage.trim() || isSending} 
               size="sm" 
               className="min-h-[36px] self-end px-3"
             >
-              <Send className="h-4 w-4" />
+              {isSending ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </div>
