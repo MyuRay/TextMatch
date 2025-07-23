@@ -60,6 +60,7 @@ interface Conversation {
     author?: string
     university?: string
     status?: string
+    transactionStatus?: string
   }
   otherUser?: {
     id: string
