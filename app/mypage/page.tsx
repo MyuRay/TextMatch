@@ -6,6 +6,7 @@ import Link from "next/link"
 import { collection, doc, getDoc, getDocs, query, where, setDoc } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import { useAuth } from "@/lib/useAuth"
+import { isAdmin } from "@/lib/adminUtils"
 import { Textbook, UserProfile, getUserFavorites, getUserPurchases, getUserSellingBooks, getUserTransactionBooks, createOrGetConversation, removeFromFavorites } from "@/lib/firestore"
 import { uploadAvatar } from "@/lib/storage"
 import { Button } from "@/components/ui/button"
@@ -22,7 +23,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Check, ChevronsUpDown } from "lucide-react"
 import {
-  BookOpen, Edit, Heart, MessageSquare, Package, Settings, ShoppingBag, Trash2, Camera, X, Clock
+  BookOpen, Edit, Heart, MessageSquare, Package, Settings, ShoppingBag, Trash2, Camera, X, Clock, Shield
 } from "lucide-react"
 import { Header } from "../components/header"
 import { Footer } from "../components/footer"
@@ -332,6 +333,18 @@ export default function MyPage() {
             <TabButton label="お気に入り" icon={<Heart />} active={activeTab === "favorites"} onClick={() => handleTabChange("favorites")} mobile />
             <TabButton label="メッセージ" icon={<MessageSquare />} active={activeTab === "messages"} onClick={() => handleTabChange("messages")} mobile />
           </div>
+          
+          {/* モバイル管理者リンク */}
+          {isAdmin(userProfile) && (
+            <div className="mt-4">
+              <Link href="/admin">
+                <Button variant="outline" className="w-full text-blue-600 border-blue-200 hover:bg-blue-50">
+                  <Shield className="mr-2 h-4 w-4" />
+                  管理画面
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-8">
@@ -363,6 +376,18 @@ export default function MyPage() {
                   <TabButton label="購入履歴" icon={<ShoppingBag />} active={activeTab === "purchased"} onClick={() => handleTabChange("purchased")} />
                   <TabButton label="お気に入り" icon={<Heart />} active={activeTab === "favorites"} onClick={() => handleTabChange("favorites")} />
                   <TabButton label="メッセージ" icon={<MessageSquare />} active={activeTab === "messages"} onClick={() => handleTabChange("messages")} />
+                  
+                  {/* 管理者専用リンク */}
+                  {isAdmin(userProfile) && (
+                    <div className="mt-4 pt-4 border-t">
+                      <Link href="/admin">
+                        <Button variant="outline" className="w-full justify-start text-blue-600 border-blue-200 hover:bg-blue-50">
+                          <Shield className="mr-2 h-4 w-4" />
+                          管理画面
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
                 </div>
                 <div className="mt-6">
                   <Link href="/post-textbook">
