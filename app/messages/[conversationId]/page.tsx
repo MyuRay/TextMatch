@@ -23,8 +23,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Send, User, BookOpen, Clock, CheckCircle, RotateCcw, CreditCard } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { ArrowLeft, Send, User, BookOpen, Clock, CheckCircle, RotateCcw, CreditCard, Flag, AlertTriangle } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Link from "next/link"
 import { getUserProfile, getTextbookById, updateTextbookStatus } from "@/lib/firestore"
 import { sendEmailNotification, createMessageNotificationEmail } from "@/lib/emailService"
@@ -48,6 +50,11 @@ export default function ConversationPage() {
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [paymentLoading, setPaymentLoading] = useState(false)
+  const [showReportDialog, setShowReportDialog] = useState(false)
+  const [reportReason, setReportReason] = useState("")
+  const [reportDetails, setReportDetails] = useState("")
+  const [agreedToReport, setAgreedToReport] = useState(false)
+  const [reportSubmitting, setReportSubmitting] = useState(false)
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -585,7 +592,7 @@ export default function ConversationPage() {
       
       const messagesRef = collection(db, "conversations", conversationId as string, "messages")
       await addDoc(messagesRef, {
-        text: `✅ ${displayName}さんが商品を受け取りました。取引完了です！お疲れ様でした。\n\n📝 サービス向上のため、アンケートにご協力ください：\nhttps://docs.google.com/forms/d/e/1FAIpQLSdoNDHtDrD6pjIDhqL7sed1xCUe-7wtDcNGijirRfw3vZVpMg/viewform?usp=header`,
+        text: `✅ ${displayName}さんが商品を受け取りました。取引完了です！お疲れ様でした。\n\n📝 サービス向上のため、[アンケート](https://docs.google.com/forms/d/e/1FAIpQLSdoNDHtDrD6pjIDhqL7sed1xCUe-7wtDcNGijirRfw3vZVpMg/viewform?usp=header)にご協力ください`,
         senderId: user.uid,
         createdAt: serverTimestamp(),
         isRead: false,
@@ -604,6 +611,64 @@ export default function ConversationPage() {
     } catch (error) {
       console.error("受取完了エラー:", error)
       alert("受取完了の処理に失敗しました")
+    }
+  }
+
+  // 通報処理
+  const handleReport = async () => {
+    if (!reportReason || !agreedToReport) {
+      alert("通報理由を選択し、利用規約に同意してください")
+      return
+    }
+
+    setReportSubmitting(true)
+    
+    try {
+      // 通報データを保存
+      const reportData = {
+        reporterId: user!.uid,
+        reportedUserId: otherUserId,
+        conversationId: conversationId,
+        textbookId: textbook?.id,
+        reason: reportReason,
+        details: reportDetails,
+        reporterName: currentUserProfile.name,
+        reportedUserName: otherUser.name,
+        textbookTitle: textbook?.title,
+        createdAt: serverTimestamp(),
+        status: 'pending',
+        reviewed: false
+      }
+
+      await addDoc(collection(db, "reports"), reportData)
+
+      // 管理者に通知を送信
+      const adminNotificationData = {
+        type: 'user_report',
+        title: '新しい通報が届きました',
+        message: `${currentUserProfile.name}さんから${otherUser.name}さんへの通報: ${reportReason}`,
+        data: {
+          reporterId: user!.uid,
+          reportedUserId: otherUserId,
+          conversationId: conversationId,
+          reason: reportReason
+        },
+        createdAt: serverTimestamp(),
+        isRead: false
+      }
+
+      await addDoc(collection(db, "admin_notifications"), adminNotificationData)
+
+      alert("通報を受け付けました。内容を確認の上、適切に対応いたします。")
+      setShowReportDialog(false)
+      setReportReason("")
+      setReportDetails("")
+      setAgreedToReport(false)
+    } catch (error) {
+      console.error("通報エラー:", error)
+      alert("通報の送信に失敗しました。しばらく時間をおいてお試しください。")
+    } finally {
+      setReportSubmitting(false)
     }
   }
 
@@ -660,11 +725,24 @@ export default function ConversationPage() {
                 )}
               </div>
               
-              {conversation && (
-                <Badge variant={conversation.buyerId === user?.uid ? 'default' : 'secondary'} className="flex-shrink-0">
-                  {conversation.buyerId === user?.uid ? '購入希望' : '出品者'}
-                </Badge>
-              )}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {conversation && (
+                  <Badge variant={conversation.buyerId === user?.uid ? 'default' : 'secondary'}>
+                    {conversation.buyerId === user?.uid ? '購入希望' : '出品者'}
+                  </Badge>
+                )}
+                
+                {/* 通報ボタン */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowReportDialog(true)}
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  <Flag className="h-4 w-4 mr-1" />
+                  通報
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -705,7 +783,64 @@ export default function ConversationPage() {
               </div>
             </CardContent>
           </Card>
-          
+        </div>
+      )}
+
+      {/* 購入者向け販売許可待ち表示 - 固定位置 */}
+      {conversation && user && user.uid === conversation.buyerId && textbook?.status === 'available' && !conversation.transactionStatus && (
+        <div className="sticky top-0 z-20 bg-white border-b shadow-sm">
+          <div className="container mx-auto px-4 py-2">
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="p-3">
+                <div className="relative">
+                  <div className="space-y-2 pr-16">
+                    <h4 className="font-medium text-blue-900 text-sm">💬 販売許可待ち</h4>
+                    <p className="text-xs text-blue-800 mb-2">
+                      出品者との相談後、販売許可が出た場合に購入が可能になります。
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed text-xs px-3 py-1 h-7 w-full"
+                      disabled={true}
+                    >
+                      <CreditCard className="mr-1 h-3 w-3" />
+                      購入する（許可待ち）
+                    </Button>
+                  </div>
+                  
+                  {/* 右上のアクションボタン */}
+                  <div className="absolute top-0 right-0 flex gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowReportDialog(true)}
+                      className="text-red-600 border-red-200 hover:bg-red-50 text-xs px-2 py-1 h-6"
+                    >
+                      <Flag className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (window.confirm('購入をキャンセルしますか？\n\nこの会話から退出し、他の教科書を探すことができます。')) {
+                          router.push('/marketplace')
+                        }
+                      }}
+                      className="text-gray-600 border-gray-200 hover:bg-gray-50 text-xs px-2 py-1 h-6"
+                    >
+                      ×
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {textbook && (
+        <div className="container mx-auto px-4">
           {/* 出品者向け成約案内・ボタン */}
           {conversation && user && user.uid === conversation.sellerId && (
             <Card className="bg-blue-50 border-blue-200 mt-2">
@@ -827,28 +962,6 @@ export default function ConversationPage() {
           )}
 
 
-          {/* 購入者向け販売許可待ち表示 */}
-          {conversation && user && user.uid === conversation.buyerId && textbook?.status === 'available' && !conversation.transactionStatus && (
-            <Card className="bg-blue-50 border-blue-200 mt-2">
-              <CardContent className="p-3">
-                <div className="space-y-2">
-                  <h4 className="font-medium text-blue-900 text-sm">💬 販売許可待ち</h4>
-                  <p className="text-xs text-blue-800 mb-2">
-                    出品者との相談後、販売許可が出た場合に購入が可能になります。
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed text-xs px-3 py-1 h-7 w-full"
-                    disabled={true}
-                  >
-                    <CreditCard className="mr-1 h-3 w-3" />
-                    購入する（許可待ち）
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
 
           {/* 購入者向け決済・受取表示 */}
@@ -1069,6 +1182,99 @@ export default function ConversationPage() {
           </div>
         </div>
       </footer>
+
+      {/* 通報ダイアログ */}
+      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              ユーザーを通報
+            </DialogTitle>
+            <DialogDescription>
+              不適切な行為や取引トラブルを管理者に報告できます
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">通報理由 *</label>
+              <Select value={reportReason} onValueChange={setReportReason}>
+                <SelectTrigger>
+                  <SelectValue placeholder="理由を選択してください" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no_show">約束の日時に現れず、連絡が取れない</SelectItem>
+                  <SelectItem value="fraud">詐欺的行為（偽の商品情報、代金持ち逃げ等）</SelectItem>
+                  <SelectItem value="harassment">嫌がらせ・迷惑行為</SelectItem>
+                  <SelectItem value="external_contact">外部SNS・プラットフォームへの誘導</SelectItem>
+                  <SelectItem value="inappropriate_language">不適切な言葉遣い・暴言</SelectItem>
+                  <SelectItem value="fake_profile">なりすまし・偽プロフィール</SelectItem>
+                  <SelectItem value="payment_issue">決済関連のトラブル</SelectItem>
+                  <SelectItem value="violation">利用規約違反</SelectItem>
+                  <SelectItem value="other">その他</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">詳細（任意）</label>
+              <Textarea
+                placeholder="具体的な状況や詳細があれば記入してください"
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value)}
+                className="min-h-[80px]"
+              />
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-yellow-800">
+                  <p><strong>重要な注意事項：</strong></p>
+                  <ul className="mt-1 space-y-1 list-disc list-inside">
+                    <li>虚偽の通報は利用規約違反となります</li>
+                    <li>通報内容は管理者が確認し、適切に対応します</li>
+                    <li>緊急の場合は直接運営まで連絡してください</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="report-agreement" 
+                checked={agreedToReport}
+                onCheckedChange={(checked) => setAgreedToReport(checked as boolean)}
+              />
+              <label htmlFor="report-agreement" className="text-sm">
+                上記の内容が事実であり、利用規約に同意します
+              </label>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowReportDialog(false)
+                setReportReason("")
+                setReportDetails("")
+                setAgreedToReport(false)
+              }}
+            >
+              キャンセル
+            </Button>
+            <Button 
+              onClick={handleReport}
+              disabled={!reportReason || !agreedToReport || reportSubmitting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {reportSubmitting ? "送信中..." : "通報する"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

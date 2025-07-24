@@ -10,7 +10,7 @@ import { Footer } from "@/app/components/footer"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Users, Book, MessageSquare, TrendingUp, Shield, Settings, FileText, AlertTriangle, DollarSign, Banknote, CheckCircle, AlertCircle } from "lucide-react"
+import { Users, Book, MessageSquare, TrendingUp, Shield, Settings, FileText, AlertTriangle, DollarSign, Banknote, CheckCircle, AlertCircle, Flag } from "lucide-react"
 import Link from "next/link"
 
 interface DashboardStats {
@@ -415,6 +415,23 @@ export default function AdminDashboard() {
                 利用統計、売上レポート、ユーザー行動分析
               </p>
               <Link href="/admin/reports">
+                <Button className="w-full">管理画面を開く</Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Flag className="h-5 w-5" />
+                通報管理
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                ユーザー通報の確認・対応、不適切行為の管理
+              </p>
+              <Link href="/admin/reports-management">
                 <Button className="w-full">管理画面を開く</Button>
               </Link>
             </CardContent>

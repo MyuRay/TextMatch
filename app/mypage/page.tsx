@@ -27,10 +27,14 @@ import {
 } from "lucide-react"
 import { Header } from "../components/header"
 import { Footer } from "../components/footer"
+import { usePageTracking } from "@/lib/usePageTracking"
 import { OfficialIcon } from "../components/official-badge"
 import EarningsDashboard from "@/components/earnings-dashboard"
 
 export default function MyPage() {
+  // ページビューを記録
+  usePageTracking('/mypage')
+  
   const [activeTab, setActiveTab] = useState("profile")
   const [userData, setUserData] = useState<UserProfile | null>(null)
   const [sellingBooks, setSellingBooks] = useState<Textbook[]>([])

@@ -8,6 +8,8 @@ import { ArrowLeft, Calendar, MapPin, MessageCircle, User, BookOpen, Heart, Chec
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Header } from "@/app/components/header"
 import { Footer } from "@/app/components/footer"
 import { OfficialIcon } from "@/app/components/official-badge"
@@ -28,6 +30,8 @@ export default function TextbookDetailPage() {
   const [sellerProfile, setSellerProfile] = useState<{name: string, avatarUrl?: string, isOfficial?: boolean, officialType?: string} | null>(null)
   const [otherBooks, setOtherBooks] = useState<Textbook[]>([])
   const [otherBooksLoading, setOtherBooksLoading] = useState(false)
+  const [showMessageRulesDialog, setShowMessageRulesDialog] = useState(false)
+  const [rulesAccepted, setRulesAccepted] = useState(false)
 
   const conditionMap: Record<string, string> = {
     new: "新品",
@@ -178,6 +182,45 @@ export default function TextbookDetailPage() {
         <Footer />
       </div>
     )
+  }
+
+  const handleContactSeller = () => {
+    if (!user || !textbook?.userId) {
+      router.push("/login")
+      return
+    }
+    
+    if (user.uid === textbook.userId) {
+      alert("自分の出品には連絡できません")
+      return
+    }
+
+    // メッセージルールダイアログを表示
+    setShowMessageRulesDialog(true)
+    setRulesAccepted(false)
+  }
+
+  const proceedToMessage = async () => {
+    if (!rulesAccepted) {
+      alert("メッセージルールに同意してください")
+      return
+    }
+
+    try {
+      console.log("会話作成開始...")
+      const conversationId = await createOrGetConversation(
+        user!.uid,
+        textbook!.userId,
+        textbook!.id
+      )
+      console.log("作成された会話ID:", conversationId)
+      setShowMessageRulesDialog(false)
+      router.push(`/messages/${conversationId}`)
+    } catch (error) {
+      console.error("会話作成エラー:", error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      alert(`エラーが発生しました: ${errorMessage}`)
+    }
   }
 
   return (
@@ -367,37 +410,7 @@ export default function TextbookDetailPage() {
                     className="flex-1"
                     variant="outline"
                     disabled={(textbook?.status === 'sold' || textbook?.transactionStatus === 'paid')}
-                    onClick={async () => {
-                      try {
-                        console.log("連絡ボタンクリック - ユーザー:", user?.uid)
-                        console.log("連絡ボタンクリック - 出品者:", textbook?.userId)
-                        
-                        if (!user || !textbook?.userId) {
-                          console.log("ユーザーまたは出品者情報がありません")
-                          router.push("/login")
-                          return
-                        }
-
-                        if (user.uid === textbook.userId) {
-                          alert("自分の出品には連絡できません")
-                          return
-                        }
-
-                        console.log("会話作成開始...")
-                        const conversationId = await createOrGetConversation(
-                          user.uid,
-                          textbook.userId,
-                          textbook.id
-                        )
-                        console.log("作成された会話ID:", conversationId)
-
-                        router.push(`/messages/${conversationId}`)
-                      } catch (error) {
-                        console.error("会話作成エラー:", error)
-                        const errorMessage = error instanceof Error ? error.message : String(error)
-                        alert(`エラーが発生しました: ${errorMessage}`)
-                      }
-                    }}
+                    onClick={handleContactSeller}
                   >
                     <MessageCircle className="mr-2 h-4 w-4" />
                     {(textbook?.status === 'sold' || textbook?.transactionStatus === 'paid') ? '売切済' : '出品者に連絡する'}
@@ -540,6 +553,76 @@ export default function TextbookDetailPage() {
       )}
       
       <Footer />
+
+      {/* メッセージルールダイアログ */}
+      <Dialog open={showMessageRulesDialog} onOpenChange={setShowMessageRulesDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" />
+              メッセージご利用ルール
+            </DialogTitle>
+            <DialogDescription>
+              安全で快適な取引のため、以下のルールをお守りください
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <h4 className="font-semibold text-red-800 mb-2">🚫 禁止事項</h4>
+              <ul className="text-sm text-red-700 space-y-2">
+                <li>• <strong>外部SNS誘導の禁止</strong><br />
+                  LINE、Instagram、Twitter等への誘導は禁止です</li>
+                <li>• <strong>外部取引の誘導禁止</strong><br />
+                  メルカリ、フリマアプリ等での取引誘導は禁止です</li>
+                <li>• <strong>個人情報の交換禁止</strong><br />
+                  電話番号、住所等の直接交換は禁止です</li>
+                <li>• <strong>不適切な内容の禁止</strong><br />
+                  教科書取引に関係のない内容は禁止です</li>
+              </ul>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-semibold text-blue-800 mb-2">✅ 推奨事項</h4>
+              <ul className="text-sm text-blue-700 space-y-1">
+                <li>• 教科書の状態や取引条件を明確に相談</li>
+                <li>• キャンパス内での安全な受け渡し場所を相談</li>
+                <li>• 丁寧で礼儀正しいやり取りを心がける</li>
+                <li>• 不明な点は遠慮なく質問する</li>
+              </ul>
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-sm text-yellow-800">
+                <strong>⚠️ 注意：</strong>これらのルールに違反した場合、アカウント停止等の措置を取る場合があります。
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="rules-agreement" 
+                checked={rulesAccepted}
+                onCheckedChange={(checked) => setRulesAccepted(checked as boolean)}
+              />
+              <label htmlFor="rules-agreement" className="text-sm font-medium">
+                上記のルールを理解し、同意します
+              </label>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMessageRulesDialog(false)}>
+              キャンセル
+            </Button>
+            <Button 
+              onClick={proceedToMessage}
+              disabled={!rulesAccepted}
+            >
+              メッセージを開始
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

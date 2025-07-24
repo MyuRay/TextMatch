@@ -12,6 +12,7 @@ import { Header } from "./components/header"
 import { Footer } from "./components/footer"
 import { getTextbooks, getAllTextbooks, Textbook } from "@/lib/firestore"
 import { useAuth } from "@/lib/useAuth"
+import { usePageTracking } from "@/lib/usePageTracking"
 
 export default function HomePage() {
   const [latestBooks, setLatestBooks] = useState<Textbook[]>([])
@@ -20,6 +21,9 @@ export default function HomePage() {
   const { user } = useAuth()
   const router = useRouter()
   const scrollRef = useRef<HTMLDivElement>(null)
+  
+  // ページビューを記録
+  usePageTracking('/')
 
   useEffect(() => {
     const fetchBooks = async () => {

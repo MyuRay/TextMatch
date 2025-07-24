@@ -250,7 +250,8 @@ export async function getDashboardStats(): Promise<{
     const [
       allUsers,
       allBooks,
-      recentSignups
+      recentSignups,
+      reportsSnapshot
     ] = await Promise.all([
       getDocs(collection(db, "users")),
       getDocs(collection(db, "books")),
@@ -259,8 +260,15 @@ export async function getDashboardStats(): Promise<{
         weekAgo.setDate(weekAgo.getDate() - 7)
         const weekAgoTimestamp = Timestamp.fromDate(weekAgo)
         return getDocs(query(collection(db, "users"), where("createdAt", ">=", weekAgoTimestamp)))
-      })()
+      })(),
+      getDocs(collection(db, "reports"))
     ])
+
+    // 要確認コンテンツ数を計算（未確認 + 確認済みだが未解決の通報）
+    const flaggedContentCount = reportsSnapshot.docs.filter(doc => {
+      const status = doc.data().status
+      return status === 'pending' || status === 'reviewed'
+    }).length
 
     // メッセージ数を計算（全会話の全メッセージ）
     let totalMessages = 0
@@ -350,7 +358,7 @@ export async function getDashboardStats(): Promise<{
       totalMessages,
       activeTransactions,
       recentSignups: recentSignups.size,
-      flaggedContent: 0, // TODO: 実装時に報告/フラグ機能を追加
+      flaggedContent: flaggedContentCount,
       totalTransactionAmount,
       totalRevenue
     }
@@ -366,6 +374,142 @@ export async function getDashboardStats(): Promise<{
       totalTransactionAmount: 0,
       totalRevenue: 0
     }
+  }
+}
+
+/**
+ * 通報一覧を取得
+ */
+export async function getReports(
+  limitCount: number = 50,
+  status?: 'pending' | 'reviewed' | 'resolved'
+): Promise<{
+  reports: Array<{
+    id: string
+    reporterId: string
+    reportedUserId: string
+    conversationId?: string
+    textbookId?: string
+    reason: string
+    details?: string
+    reporterName: string
+    reportedUserName: string
+    textbookTitle?: string
+    createdAt: Timestamp
+    status: 'pending' | 'reviewed' | 'resolved'
+    reviewed: boolean
+    adminNotes?: string
+    resolvedAt?: Timestamp
+    resolvedBy?: string
+  }>
+}> {
+  try {
+    let q: any
+    
+    if (status) {
+      // ステータスフィルタがある場合は、まずステータスでフィルタして後でソート
+      q = query(
+        collection(db, "reports"),
+        where("status", "==", status),
+        limit(limitCount)
+      )
+    } else {
+      // ステータスフィルタがない場合は、作成日でソート
+      q = query(
+        collection(db, "reports"),
+        orderBy("createdAt", "desc"),
+        limit(limitCount)
+      )
+    }
+
+    const snapshot = await getDocs(q)
+    let reports = snapshot.docs.map(doc => {
+      const data = doc.data() as any
+      return {
+        id: doc.id,
+        reporterId: data?.reporterId || '',
+        reportedUserId: data?.reportedUserId || '',
+        conversationId: data?.conversationId,
+        textbookId: data?.textbookId,
+        reason: data?.reason || '',
+        details: data?.details,
+        reporterName: data?.reporterName || '',
+        reportedUserName: data?.reportedUserName || '',
+        textbookTitle: data?.textbookTitle,
+        createdAt: data?.createdAt || Timestamp.now(),
+        status: data?.status || 'pending',
+        reviewed: data?.reviewed || false,
+        adminNotes: data?.adminNotes,
+        resolvedAt: data?.resolvedAt,
+        resolvedBy: data?.resolvedBy
+      }
+    }) as Array<{
+      id: string
+      reporterId: string
+      reportedUserId: string
+      conversationId?: string
+      textbookId?: string
+      reason: string
+      details?: string
+      reporterName: string
+      reportedUserName: string
+      textbookTitle?: string
+      createdAt: Timestamp
+      status: 'pending' | 'reviewed' | 'resolved'
+      reviewed: boolean
+      adminNotes?: string
+      resolvedAt?: Timestamp
+      resolvedBy?: string
+    }>
+
+    // ステータスフィルタがある場合は、クライアントサイドで作成日順にソート
+    if (status) {
+      reports = reports.sort((a, b) => {
+        const aTime = a.createdAt?.seconds || 0
+        const bTime = b.createdAt?.seconds || 0
+        return bTime - aTime // 降順（新しい順）
+      })
+    }
+
+    return { reports }
+  } catch (error) {
+    console.error("通報一覧取得エラー:", error)
+    return { reports: [] }
+  }
+}
+
+/**
+ * 通報の状態を更新
+ */
+export async function updateReportStatus(
+  reportId: string,
+  status: 'pending' | 'reviewed' | 'resolved',
+  adminNotes?: string,
+  adminId?: string
+): Promise<void> {
+  try {
+    const reportRef = doc(db, "reports", reportId)
+    const updateData: any = {
+      status,
+      reviewed: true
+    }
+
+    if (adminNotes) {
+      updateData.adminNotes = adminNotes
+    }
+
+    if (status === 'resolved') {
+      updateData.resolvedAt = Timestamp.now()
+      if (adminId) {
+        updateData.resolvedBy = adminId
+      }
+    }
+
+    await updateDoc(reportRef, updateData)
+    console.log(`通報 ${reportId} の状態を ${status} に更新しました`)
+  } catch (error) {
+    console.error("通報状態更新エラー:", error)
+    throw error
   }
 }
 
@@ -856,8 +1000,14 @@ export async function updateBookDetails(
 ): Promise<void> {
   try {
     const bookRef = doc(db, "books", bookId)
+    
+    // undefined値を除外
+    const cleanUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([_, value]) => value !== undefined)
+    )
+    
     await updateDoc(bookRef, {
-      ...updates,
+      ...cleanUpdates,
       updatedAt: Timestamp.now()
     })
     
@@ -865,5 +1015,961 @@ export async function updateBookDetails(
   } catch (error) {
     console.error("出品情報更新エラー:", error)
     throw error
+  }
+}
+
+// メッセージ管理機能
+export interface AdminConversation {
+  id: string
+  buyerId: string
+  sellerId: string
+  bookId: string
+  bookTitle: string
+  buyerName: string
+  sellerName: string
+  lastMessage: string
+  lastMessageAt: Timestamp
+  messageCount: number
+  createdAt: Timestamp
+}
+
+export interface AdminMessage {
+  id: string
+  conversationId: string
+  text: string
+  senderId: string
+  senderName: string
+  createdAt: Timestamp
+  isRead: boolean
+  isSystemMessage?: boolean
+  isReported?: boolean
+}
+
+/**
+ * 全ての会話を取得（管理者用）
+ */
+export async function getAllConversations(
+  pageSize: number = 20,
+  lastDoc?: QueryDocumentSnapshot
+): Promise<{ conversations: AdminConversation[], lastDoc?: QueryDocumentSnapshot }> {
+  try {
+    console.log("会話一覧取得開始...")
+    
+    // まず、シンプルに全ての会話を取得してみる
+    let q = query(collection(db, "conversations"), limit(pageSize))
+    
+    // createdAtフィールドが存在するかチェックしてからorderByを適用
+    try {
+      q = query(collection(db, "conversations"), orderBy("createdAt", "desc"), limit(pageSize))
+    } catch (orderError) {
+      console.warn("createdAtでの並び替えに失敗。並び替えなしで実行:", orderError)
+      q = query(collection(db, "conversations"), limit(pageSize))
+    }
+    
+    if (lastDoc) {
+      q = query(q, startAfter(lastDoc))
+    }
+    
+    const snapshot = await getDocs(q)
+    console.log(`取得した会話数: ${snapshot.docs.length}`)
+    
+    if (snapshot.empty) {
+      console.log("会話が見つかりませんでした")
+      return { conversations: [], lastDoc: undefined }
+    }
+    
+    const conversations: AdminConversation[] = []
+    
+    for (const docSnap of snapshot.docs) {
+      const data = docSnap.data()
+      console.log(`会話データ:`, { id: docSnap.id, data })
+      
+      try {
+        // 購入者・販売者・教科書情報を取得
+        const [buyerDoc, sellerDoc, bookDoc] = await Promise.all([
+          getDoc(doc(db, "users", data.buyerId || "")).catch(() => null),
+          getDoc(doc(db, "users", data.sellerId || "")).catch(() => null),
+          getDoc(doc(db, "books", data.bookId || "")).catch(() => null)
+        ])
+        
+        // メッセージ数と最新メッセージを取得
+        const messagesQuery = query(
+          collection(db, "conversations", docSnap.id, "messages"),
+          orderBy("createdAt", "desc"),
+          limit(1)
+        )
+        const messagesSnapshot = await getDocs(collection(db, "conversations", docSnap.id, "messages"))
+        const latestMessageSnapshot = await getDocs(messagesQuery)
+        
+        let lastMessage = ""
+        let lastMessageAt = data.createdAt
+        
+        if (!latestMessageSnapshot.empty) {
+          const latestMsg = latestMessageSnapshot.docs[0].data()
+          lastMessage = latestMsg.text || ""
+          lastMessageAt = latestMsg.createdAt || data.createdAt
+        }
+        
+        conversations.push({
+          id: docSnap.id,
+          buyerId: data.buyerId || "",
+          sellerId: data.sellerId || "",
+          bookId: data.bookId || "",
+          bookTitle: (bookDoc && bookDoc.exists()) ? (bookDoc.data()?.title || "不明な教科書") : "削除された教科書",
+          buyerName: (buyerDoc && buyerDoc.exists()) ? 
+            (buyerDoc.data()?.nickname || buyerDoc.data()?.fullName || "不明なユーザー") : 
+            "不明なユーザー",
+          sellerName: (sellerDoc && sellerDoc.exists()) ? 
+            (sellerDoc.data()?.nickname || sellerDoc.data()?.fullName || "不明なユーザー") : 
+            "不明なユーザー",
+          lastMessage,
+          lastMessageAt,
+          messageCount: messagesSnapshot.size,
+          createdAt: data.createdAt || Timestamp.now()
+        })
+      } catch (docError) {
+        console.error(`会話 ${docSnap.id} の処理エラー:`, docError)
+        // エラーが発生した会話もリストに含める（基本情報のみ）
+        conversations.push({
+          id: docSnap.id,
+          buyerId: data.buyerId || "",
+          sellerId: data.sellerId || "",
+          bookId: data.bookId || "",
+          bookTitle: "データ取得エラー",
+          buyerName: "データ取得エラー",
+          sellerName: "データ取得エラー",
+          lastMessage: "データ取得エラー",
+          lastMessageAt: data.createdAt || Timestamp.now(),
+          messageCount: 0,
+          createdAt: data.createdAt || Timestamp.now()
+        })
+      }
+    }
+    
+    console.log(`処理完了。会話数: ${conversations.length}`)
+    
+    const newLastDoc = snapshot.docs[snapshot.docs.length - 1]
+    
+    return {
+      conversations,
+      lastDoc: newLastDoc
+    }
+  } catch (error) {
+    console.error("会話一覧取得エラー:", error)
+    throw error
+  }
+}
+
+/**
+ * 特定の会話のメッセージを取得（管理者用）
+ */
+export async function getConversationMessages(conversationId: string): Promise<AdminMessage[]> {
+  try {
+    const messagesQuery = query(
+      collection(db, "conversations", conversationId, "messages"),
+      orderBy("createdAt", "asc")
+    )
+    
+    const messagesSnapshot = await getDocs(messagesQuery)
+    
+    const messages: AdminMessage[] = []
+    
+    for (const msgDoc of messagesSnapshot.docs) {
+      const msgData = msgDoc.data()
+      
+      let senderName = "システム"
+      if (msgData.senderId !== "system") {
+        const senderDoc = await getDoc(doc(db, "users", msgData.senderId))
+        senderName = senderDoc.exists() ? 
+          (senderDoc.data().nickname || senderDoc.data().fullName) : 
+          "不明なユーザー"
+      }
+      
+      messages.push({
+        id: msgDoc.id,
+        conversationId,
+        text: msgData.text,
+        senderId: msgData.senderId,
+        senderName,
+        createdAt: msgData.createdAt,
+        isRead: msgData.isRead || false,
+        isSystemMessage: msgData.isSystemMessage || false,
+        isReported: msgData.isReported || false
+      })
+    }
+    
+    return messages
+  } catch (error) {
+    console.error("メッセージ取得エラー:", error)
+    throw error
+  }
+}
+
+/**
+ * メッセージを削除（管理者用）
+ */
+export async function deleteMessage(conversationId: string, messageId: string, reason: string): Promise<void> {
+  try {
+    // メッセージを削除
+    await deleteDoc(doc(db, "conversations", conversationId, "messages", messageId))
+    
+    // 削除ログを記録
+    await addDoc(collection(db, "admin_message_delete_logs"), {
+      conversationId,
+      messageId,
+      deleteReason: reason,
+      deletedBy: "admin", // 実際の管理者IDを使用する場合は修正
+      deletedAt: Timestamp.now()
+    })
+    
+    console.log(`メッセージ ${messageId} を削除しました`)
+  } catch (error) {
+    console.error("メッセージ削除エラー:", error)
+    throw error
+  }
+}
+
+/**
+ * 会話を削除（管理者用）
+ */
+export async function deleteConversation(conversationId: string, reason: string): Promise<void> {
+  try {
+    // 会話内の全メッセージを削除
+    const messagesSnapshot = await getDocs(collection(db, "conversations", conversationId, "messages"))
+    const deletePromises = messagesSnapshot.docs.map(msgDoc => deleteDoc(msgDoc.ref))
+    await Promise.all(deletePromises)
+    
+    // 会話を削除
+    await deleteDoc(doc(db, "conversations", conversationId))
+    
+    // 削除ログを記録
+    await addDoc(collection(db, "admin_conversation_delete_logs"), {
+      conversationId,
+      deleteReason: reason,
+      deletedBy: "admin", // 実際の管理者IDを使用する場合は修正
+      deletedAt: Timestamp.now(),
+      messageCount: messagesSnapshot.size
+    })
+    
+    console.log(`会話 ${conversationId} を削除しました`)
+  } catch (error) {
+    console.error("会話削除エラー:", error)
+    throw error
+  }
+}
+
+// 取引管理機能
+export interface AdminTransaction {
+  id: string
+  bookId: string
+  bookTitle: string
+  bookPrice: number
+  buyerId: string
+  buyerName: string
+  sellerId: string
+  sellerName: string
+  status: 'available' | 'reserved' | 'sold'
+  transactionStatus: 'pending' | 'paid' | 'completed'
+  paymentIntentId?: string
+  stripeAccountId?: string
+  createdAt: Timestamp
+  purchasedAt?: Timestamp
+  completedAt?: Timestamp
+  university?: string
+  condition?: string
+  meetupLocation?: string
+}
+
+export interface TransactionStats {
+  totalTransactions: number
+  pendingTransactions: number
+  paidTransactions: number
+  completedTransactions: number
+  totalAmount: number
+  totalRevenue: number
+  averageTransactionValue: number
+  completionRate: number
+}
+
+/**
+ * 全ての取引を取得（管理者用）
+ */
+export async function getAllTransactions(
+  pageSize: number = 20,
+  lastDoc?: QueryDocumentSnapshot,
+  filters?: {
+    status?: 'available' | 'reserved' | 'sold'
+    transactionStatus?: 'pending' | 'paid' | 'completed'
+    university?: string
+    dateFrom?: Date
+    dateTo?: Date
+  }
+): Promise<{ transactions: AdminTransaction[], lastDoc?: QueryDocumentSnapshot }> {
+  try {
+    console.log("取引一覧取得開始...")
+    
+    let q = query(collection(db, "books"), orderBy("createdAt", "desc"))
+    
+    // フィルタ適用
+    if (filters?.status) {
+      q = query(q, where("status", "==", filters.status))
+    }
+    
+    if (filters?.transactionStatus) {
+      q = query(q, where("transactionStatus", "==", filters.transactionStatus))
+    }
+    
+    if (filters?.university) {
+      q = query(q, where("university", "==", filters.university))
+    }
+    
+    if (lastDoc) {
+      q = query(q, startAfter(lastDoc))
+    }
+    
+    q = query(q, limit(pageSize))
+    
+    const snapshot = await getDocs(q)
+    console.log(`取得した取引数: ${snapshot.docs.length}`)
+    
+    if (snapshot.empty) {
+      console.log("取引が見つかりませんでした")
+      return { transactions: [], lastDoc: undefined }
+    }
+    
+    const transactions: AdminTransaction[] = []
+    
+    for (const docSnap of snapshot.docs) {
+      const data = docSnap.data()
+      
+      try {
+        // 購入者・販売者情報を取得
+        const [buyerDoc, sellerDoc] = await Promise.all([
+          data.buyerId ? getDoc(doc(db, "users", data.buyerId)).catch(() => null) : Promise.resolve(null),
+          getDoc(doc(db, "users", data.userId || "")).catch(() => null)
+        ])
+        
+        transactions.push({
+          id: docSnap.id,
+          bookId: docSnap.id,
+          bookTitle: data.title || "不明な教科書",
+          bookPrice: data.price || 0,
+          buyerId: data.buyerId || "",
+          buyerName: (buyerDoc && buyerDoc.exists()) ? 
+            (buyerDoc.data()?.nickname || buyerDoc.data()?.fullName || "不明な購入者") : 
+            "未購入",
+          sellerId: data.userId || "",
+          sellerName: (sellerDoc && sellerDoc.exists()) ? 
+            (sellerDoc.data()?.nickname || sellerDoc.data()?.fullName || "不明な販売者") : 
+            "不明な販売者",
+          status: data.status || 'available',
+          transactionStatus: data.transactionStatus || 'pending',
+          paymentIntentId: data.paymentIntentId,
+          stripeAccountId: data.stripeAccountId,
+          createdAt: data.createdAt || Timestamp.now(),
+          purchasedAt: data.purchasedAt,
+          completedAt: data.completedAt,
+          university: data.university,
+          condition: data.condition,
+          meetupLocation: data.meetupLocation
+        })
+      } catch (docError) {
+        console.error(`取引 ${docSnap.id} の処理エラー:`, docError)
+        // エラーが発生した取引もリストに含める（基本情報のみ）
+        transactions.push({
+          id: docSnap.id,
+          bookId: docSnap.id,
+          bookTitle: data.title || "データ取得エラー",
+          bookPrice: data.price || 0,
+          buyerId: data.buyerId || "",
+          buyerName: "データ取得エラー",
+          sellerId: data.userId || "",
+          sellerName: "データ取得エラー",
+          status: data.status || 'available',
+          transactionStatus: data.transactionStatus || 'pending',
+          createdAt: data.createdAt || Timestamp.now(),
+          university: data.university,
+          condition: data.condition
+        })
+      }
+    }
+    
+    console.log(`処理完了。取引数: ${transactions.length}`)
+    
+    const newLastDoc = snapshot.docs[snapshot.docs.length - 1]
+    
+    return {
+      transactions,
+      lastDoc: newLastDoc
+    }
+  } catch (error) {
+    console.error("取引一覧取得エラー:", error)
+    throw error
+  }
+}
+
+/**
+ * 取引統計を取得（管理者用）
+ */
+export async function getTransactionStats(): Promise<TransactionStats> {
+  try {
+    console.log("取引統計取得開始...")
+    
+    // 全ての教科書を取得
+    const allBooksSnapshot = await getDocs(collection(db, "books"))
+    
+    // 売却済みの教科書（取引あり）
+    const soldBooks = allBooksSnapshot.docs.filter(doc => doc.data().status === 'sold')
+    
+    // 決済済み
+    const paidBooks = soldBooks.filter(doc => doc.data().transactionStatus === 'paid')
+    
+    // 完了済み
+    const completedBooks = soldBooks.filter(doc => doc.data().transactionStatus === 'completed')
+    
+    // 保留中
+    const pendingBooks = soldBooks.filter(doc => 
+      !doc.data().transactionStatus || doc.data().transactionStatus === 'pending'
+    )
+    
+    // 金額計算
+    const totalAmount = soldBooks.reduce((sum, doc) => sum + (doc.data().price || 0), 0)
+    const totalRevenue = Math.floor(totalAmount * 0.064) // 6.4%の手数料
+    const averageTransactionValue = soldBooks.length > 0 ? totalAmount / soldBooks.length : 0
+    const completionRate = soldBooks.length > 0 ? (completedBooks.length / soldBooks.length) * 100 : 0
+    
+    const stats: TransactionStats = {
+      totalTransactions: soldBooks.length,
+      pendingTransactions: pendingBooks.length,
+      paidTransactions: paidBooks.length,
+      completedTransactions: completedBooks.length,
+      totalAmount,
+      totalRevenue,
+      averageTransactionValue,
+      completionRate
+    }
+    
+    console.log("取引統計:", stats)
+    return stats
+  } catch (error) {
+    console.error("取引統計取得エラー:", error)
+    throw error
+  }
+}
+
+/**
+ * 取引状態を更新（管理者用）
+ */
+export async function updateTransactionStatus(
+  bookId: string,
+  status: 'available' | 'reserved' | 'sold',
+  transactionStatus?: 'pending' | 'paid' | 'completed',
+  reason?: string
+): Promise<void> {
+  try {
+    const bookRef = doc(db, "books", bookId)
+    
+    const updateData: any = {
+      status,
+      updatedAt: Timestamp.now()
+    }
+    
+    if (transactionStatus) {
+      updateData.transactionStatus = transactionStatus
+      
+      if (transactionStatus === 'completed') {
+        updateData.completedAt = Timestamp.now()
+      }
+    }
+    
+    await updateDoc(bookRef, updateData)
+    
+    // 更新ログを記録
+    await addDoc(collection(db, "admin_transaction_logs"), {
+      bookId,
+      previousStatus: status,
+      newStatus: status,
+      previousTransactionStatus: transactionStatus,
+      newTransactionStatus: transactionStatus,
+      reason: reason || "管理者による手動更新",
+      updatedBy: "admin", // 実際の管理者IDを使用する場合は修正
+      updatedAt: Timestamp.now()
+    })
+    
+    console.log(`取引 ${bookId} の状態を更新しました`)
+  } catch (error) {
+    console.error("取引状態更新エラー:", error)
+    throw error
+  }
+}
+
+/**
+ * 問題のある取引を取得
+ */
+export async function getProblematicTransactions(): Promise<AdminTransaction[]> {
+  try {
+    console.log("問題のある取引検索開始...")
+    
+    // インデックス不要な方法：まず売却済みの取引を全て取得してからフィルタリング
+    const soldBooksQuery = query(
+      collection(db, "books"),
+      where("status", "==", "sold")
+    )
+    
+    const snapshot = await getDocs(soldBooksQuery)
+    console.log(`売却済み取引数: ${snapshot.docs.length}`)
+    
+    // 30日以上前の日付
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const thirtyDaysAgoTimestamp = Timestamp.fromDate(thirtyDaysAgo)
+    
+    // クライアントサイドでフィルタリング
+    const problematicDocs = snapshot.docs.filter(doc => {
+      const data = doc.data()
+      const transactionStatus = data.transactionStatus
+      const purchasedAt = data.purchasedAt
+      
+      // 未完了（pending または paid）で、30日以上前に購入された取引
+      const isIncomplete = !transactionStatus || transactionStatus === 'pending' || transactionStatus === 'paid'
+      const isOld = purchasedAt && purchasedAt.seconds < thirtyDaysAgoTimestamp.seconds
+      
+      return isIncomplete && isOld
+    })
+    
+    console.log(`問題のある取引数: ${problematicDocs.length}`)
+    const transactions: AdminTransaction[] = []
+    
+    for (const docSnap of problematicDocs) {
+      const data = docSnap.data()
+      
+      const [buyerDoc, sellerDoc] = await Promise.all([
+        data.buyerId ? getDoc(doc(db, "users", data.buyerId)).catch(() => null) : Promise.resolve(null),
+        getDoc(doc(db, "users", data.userId || "")).catch(() => null)
+      ])
+      
+      transactions.push({
+        id: docSnap.id,
+        bookId: docSnap.id,
+        bookTitle: data.title || "不明な教科書",
+        bookPrice: data.price || 0,
+        buyerId: data.buyerId || "",
+        buyerName: (buyerDoc && buyerDoc.exists()) ? 
+          (buyerDoc.data()?.nickname || buyerDoc.data()?.fullName || "不明な購入者") : 
+          "未購入",
+        sellerId: data.userId || "",
+        sellerName: (sellerDoc && sellerDoc.exists()) ? 
+          (sellerDoc.data()?.nickname || sellerDoc.data()?.fullName || "不明な販売者") : 
+          "不明な販売者",
+        status: data.status || 'available',
+        transactionStatus: data.transactionStatus || 'pending',
+        paymentIntentId: data.paymentIntentId,
+        stripeAccountId: data.stripeAccountId,
+        createdAt: data.createdAt || Timestamp.now(),
+        purchasedAt: data.purchasedAt,
+        completedAt: data.completedAt,
+        university: data.university,
+        condition: data.condition,
+        meetupLocation: data.meetupLocation
+      })
+    }
+    
+    return transactions
+  } catch (error) {
+    console.error("問題のある取引取得エラー:", error)
+    throw error
+  }
+}
+
+// レポート・分析機能
+export interface DetailedAnalytics {
+  // 基本統計
+  totalUsers: number
+  totalBooks: number
+  totalTransactions: number
+  totalRevenue: number
+  
+  // 時系列データ
+  dailyStats: {
+    date: string
+    users: number
+    books: number
+    transactions: number
+    revenue: number
+  }[]
+  
+  // 大学別統計
+  universityStats: {
+    university: string
+    userCount: number
+    bookCount: number
+    transactionCount: number
+    averagePrice: number
+  }[]
+  
+  // カテゴリ別統計
+  categoryStats: {
+    category: string
+    count: number
+    totalRevenue: number
+    averagePrice: number
+  }[]
+  
+  // ユーザー行動分析
+  userBehavior: {
+    averageListingsPerUser: number
+    averagePurchasesPerUser: number
+    topSellerStats: {
+      userId: string
+      name: string
+      totalSales: number
+      totalRevenue: number
+    }[]
+    topBuyerStats: {
+      userId: string
+      name: string
+      totalPurchases: number
+      totalSpent: number
+    }[]
+  }
+  
+  // 取引分析
+  transactionAnalysis: {
+    averageCompletionTime: number // 日数
+    completionRateByUniversity: {
+      university: string
+      completionRate: number
+    }[]
+    priceDistribution: {
+      range: string
+      count: number
+    }[]
+  }
+}
+
+/**
+ * 詳細分析データを取得
+ */
+export async function getDetailedAnalytics(
+  dateFrom?: Date,
+  dateTo?: Date
+): Promise<DetailedAnalytics> {
+  try {
+    console.log("詳細分析データ取得開始...")
+    
+    // 日付範囲設定
+    const endDate = dateTo || new Date()
+    const startDate = dateFrom || new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000) // 30日前
+    
+    // 基本データを並行取得
+    const [usersSnapshot, booksSnapshot] = await Promise.all([
+      getDocs(collection(db, "users")),
+      getDocs(collection(db, "books"))
+    ])
+    
+    const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }))
+    const books = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }))
+    const soldBooks = books.filter((book: any) => book.status === 'sold')
+    
+    // 基本統計
+    const totalUsers = users.length
+    const totalBooks = books.length
+    const totalTransactions = soldBooks.length
+    const totalRevenue = Math.floor(soldBooks.reduce((sum: number, book: any) => sum + (book.price || 0), 0) * 0.064)
+    
+    // 時系列データ生成（過去30日）
+    const dailyStats = generateDailyStats(users, books, startDate, endDate)
+    
+    // 大学別統計
+    const universityStats = generateUniversityStats(users, books)
+    
+    // カテゴリ別統計
+    const categoryStats = generateCategoryStats(books)
+    
+    // ユーザー行動分析
+    const userBehavior = await generateUserBehaviorStats(users, books)
+    
+    // 取引分析
+    const transactionAnalysis = generateTransactionAnalysis(books)
+    
+    const analytics: DetailedAnalytics = {
+      totalUsers,
+      totalBooks,
+      totalTransactions,
+      totalRevenue,
+      dailyStats,
+      universityStats,
+      categoryStats,
+      userBehavior,
+      transactionAnalysis
+    }
+    
+    console.log("詳細分析データ取得完了")
+    return analytics
+  } catch (error) {
+    console.error("詳細分析データ取得エラー:", error)
+    throw error
+  }
+}
+
+/**
+ * 日次統計データを生成
+ */
+function generateDailyStats(users: any[], books: any[], startDate: Date, endDate: Date) {
+  const dailyStats = []
+  const currentDate = new Date(startDate)
+  
+  while (currentDate <= endDate) {
+    const dateStr = currentDate.toISOString().split('T')[0]
+    const dayStart = new Date(currentDate)
+    const dayEnd = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000)
+    
+    // その日に作成されたユーザー数
+    const dayUsers = users.filter((user: any) => {
+      const createdAt = user.createdAt?.toDate?.() || new Date(user.createdAt)
+      return createdAt >= dayStart && createdAt < dayEnd
+    }).length
+    
+    // その日に作成された教科書数
+    const dayBooks = books.filter((book: any) => {
+      const createdAt = book.createdAt?.toDate?.() || new Date(book.createdAt)
+      return createdAt >= dayStart && createdAt < dayEnd
+    })
+    
+    // その日に完了した取引数
+    const dayTransactions = books.filter((book: any) => {
+      const completedAt = book.completedAt?.toDate?.() || (book.completedAt ? new Date(book.completedAt) : null)
+      return completedAt && completedAt >= dayStart && completedAt < dayEnd
+    })
+    
+    const dayRevenue = Math.floor(dayTransactions.reduce((sum: number, book: any) => sum + (book.price || 0), 0) * 0.064)
+    
+    dailyStats.push({
+      date: dateStr,
+      users: dayUsers,
+      books: dayBooks.length,
+      transactions: dayTransactions.length,
+      revenue: dayRevenue
+    })
+    
+    currentDate.setDate(currentDate.getDate() + 1)
+  }
+  
+  return dailyStats
+}
+
+/**
+ * 大学別統計を生成
+ */
+function generateUniversityStats(users: any[], books: any[]) {
+  const universityMap = new Map()
+  
+  // ユーザー数を集計
+  users.forEach((user: any) => {
+    const university = user.university || '不明'
+    if (!universityMap.has(university)) {
+      universityMap.set(university, {
+        university,
+        userCount: 0,
+        bookCount: 0,
+        transactionCount: 0,
+        totalRevenue: 0
+      })
+    }
+    universityMap.get(university).userCount++
+  })
+  
+  // 教科書数と取引数を集計
+  books.forEach((book: any) => {
+    const university = book.university || '不明'
+    if (!universityMap.has(university)) {
+      universityMap.set(university, {
+        university,
+        userCount: 0,
+        bookCount: 0,
+        transactionCount: 0,
+        totalRevenue: 0
+      })
+    }
+    
+    const stats = universityMap.get(university)
+    stats.bookCount++
+    
+    if (book.status === 'sold') {
+      stats.transactionCount++
+      stats.totalRevenue += book.price || 0
+    }
+  })
+  
+  // 平均価格を計算
+  return Array.from(universityMap.values()).map(stats => ({
+    ...stats,
+    averagePrice: stats.transactionCount > 0 ? stats.totalRevenue / stats.transactionCount : 0
+  })).sort((a, b) => b.transactionCount - a.transactionCount)
+}
+
+/**
+ * カテゴリ別統計を生成
+ */
+function generateCategoryStats(books: any[]) {
+  const categoryMap = new Map()
+  
+  books.forEach((book: any) => {
+    const category = book.genre || book.category || 'その他'
+    if (!categoryMap.has(category)) {
+      categoryMap.set(category, {
+        category,
+        count: 0,
+        totalRevenue: 0
+      })
+    }
+    
+    const stats = categoryMap.get(category)
+    stats.count++
+    
+    if (book.status === 'sold') {
+      stats.totalRevenue += book.price || 0
+    }
+  })
+  
+  return Array.from(categoryMap.values()).map(stats => ({
+    ...stats,
+    averagePrice: stats.count > 0 ? stats.totalRevenue / stats.count : 0
+  })).sort((a, b) => b.count - a.count)
+}
+
+/**
+ * ユーザー行動統計を生成
+ */
+async function generateUserBehaviorStats(users: any[], books: any[]) {
+  // ユーザーごとの出品数を計算
+  const userListings = new Map()
+  const userPurchases = new Map()
+  
+  books.forEach((book: any) => {
+    // 出品数
+    const sellerId = book.userId
+    if (sellerId) {
+      userListings.set(sellerId, (userListings.get(sellerId) || 0) + 1)
+    }
+    
+    // 購入数
+    if (book.status === 'sold' && book.buyerId) {
+      userPurchases.set(book.buyerId, (userPurchases.get(book.buyerId) || 0) + 1)
+    }
+  })
+  
+  const averageListingsPerUser = userListings.size > 0 ? 
+    Array.from(userListings.values()).reduce((sum: number, count: number) => sum + count, 0) / users.length : 0
+  
+  const averagePurchasesPerUser = userPurchases.size > 0 ?
+    Array.from(userPurchases.values()).reduce((sum: number, count: number) => sum + count, 0) / users.length : 0
+  
+  // トップセラー（販売件数で並び替え）
+  const topSellers = Array.from(userListings.entries())
+    .sort(([,a], [,b]) => b - a) // 販売件数の多い順
+    .slice(0, 10)
+    .map(([userId, count]) => {
+      const user = users.find((u: any) => u.id === userId)
+      const userBooks = books.filter((b: any) => b.userId === userId && b.status === 'sold')
+      const totalRevenue = userBooks.reduce((sum: number, book: any) => sum + (book.price || 0), 0)
+      
+      return {
+        userId,
+        name: user?.nickname || user?.fullName || '不明なユーザー',
+        totalSales: count,
+        totalRevenue
+      }
+    })
+  
+  // トップバイヤー（購入件数で並び替え）
+  const topBuyers = Array.from(userPurchases.entries())
+    .sort(([,a], [,b]) => b - a) // 購入件数の多い順
+    .slice(0, 10)
+    .map(([userId, count]) => {
+      const user = users.find((u: any) => u.id === userId)
+      const userBoughtBooks = books.filter((b: any) => b.buyerId === userId && b.status === 'sold')
+      const totalSpent = userBoughtBooks.reduce((sum: number, book: any) => sum + (book.price || 0), 0)
+      
+      return {
+        userId,
+        name: user?.nickname || user?.fullName || '不明なユーザー',
+        totalPurchases: count,
+        totalSpent
+      }
+    })
+  
+  return {
+    averageListingsPerUser,
+    averagePurchasesPerUser,
+    topSellerStats: topSellers,
+    topBuyerStats: topBuyers
+  }
+}
+
+/**
+ * 取引分析を生成
+ */
+function generateTransactionAnalysis(books: any[]) {
+  const soldBooks = books.filter((book: any) => book.status === 'sold')
+  
+  // 平均完了時間を計算
+  const completionTimes = soldBooks
+    .filter((book: any) => book.purchasedAt && book.completedAt)
+    .map((book: any) => {
+      const purchased = book.purchasedAt.toDate ? book.purchasedAt.toDate() : new Date(book.purchasedAt)
+      const completed = book.completedAt.toDate ? book.completedAt.toDate() : new Date(book.completedAt)
+      return (completed.getTime() - purchased.getTime()) / (1000 * 60 * 60 * 24) // 日数
+    })
+  
+  const averageCompletionTime = completionTimes.length > 0 ?
+    completionTimes.reduce((sum: number, time: number) => sum + time, 0) / completionTimes.length : 0
+  
+  // 大学別完了率
+  const universityCompletionMap = new Map()
+  books.forEach((book: any) => {
+    const university = book.university || '不明'
+    if (!universityCompletionMap.has(university)) {
+      universityCompletionMap.set(university, { total: 0, completed: 0 })
+    }
+    
+    const stats = universityCompletionMap.get(university)
+    if (book.status === 'sold') {
+      stats.total++
+      if (book.transactionStatus === 'completed') {
+        stats.completed++
+      }
+    }
+  })
+  
+  const completionRateByUniversity = Array.from(universityCompletionMap.entries())
+    .map(([university, stats]) => ({
+      university,
+      completionRate: stats.total > 0 ? (stats.completed / stats.total) * 100 : 0
+    }))
+    .filter(item => item.completionRate > 0)
+    .sort((a, b) => b.completionRate - a.completionRate)
+  
+  // 価格分布
+  const priceRanges = [
+    { range: '0-1,000円', min: 0, max: 1000 },
+    { range: '1,001-3,000円', min: 1001, max: 3000 },
+    { range: '3,001-5,000円', min: 3001, max: 5000 },
+    { range: '5,001-10,000円', min: 5001, max: 10000 },
+    { range: '10,001円以上', min: 10001, max: Infinity }
+  ]
+  
+  const priceDistribution = priceRanges.map(range => ({
+    range: range.range,
+    count: books.filter((book: any) => {
+      const price = book.price || 0
+      return price >= range.min && price <= range.max
+    }).length
+  }))
+  
+  return {
+    averageCompletionTime,
+    completionRateByUniversity,
+    priceDistribution
   }
 }

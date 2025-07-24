@@ -14,6 +14,7 @@ import { Header } from "../components/header"
 import { Footer } from "../components/footer"
 // import StripeConnectButton from "@/components/stripe-connect-button"
 import { useAuth } from "@/lib/useAuth"
+import { usePageTracking } from "@/lib/usePageTracking"
 
 export default function MarketplacePage() {
   const searchParams = useSearchParams()
@@ -31,6 +32,9 @@ export default function MarketplacePage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [allTextbooks, setAllTextbooks] = useState<Textbook[]>([])
   const [filteredTextbooks, setFilteredTextbooks] = useState<Textbook[]>([])
+
+  // ページビューを記録
+  usePageTracking('/marketplace')
 
   useEffect(() => {
     const fetchBooks = async () => {

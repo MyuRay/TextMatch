@@ -391,7 +391,11 @@ export default function BookDetailPage() {
                       <Input
                         type="number"
                         value={editData.year || ''}
-                        onChange={(e) => setEditData(prev => ({ ...prev, year: parseInt(e.target.value) || undefined }))}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          const numValue = value ? parseInt(value) : null
+                          setEditData(prev => ({ ...prev, year: numValue || undefined }))
+                        }}
                         className="mt-1"
                       />
                     </div>
@@ -570,7 +574,7 @@ export default function BookDetailPage() {
                           <SelectValue placeholder="未設定" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">未設定</SelectItem>
+                          <SelectItem value="unset">未設定</SelectItem>
                           <SelectItem value="pending">保留中</SelectItem>
                           <SelectItem value="paid">決済済</SelectItem>
                           <SelectItem value="completed">完了</SelectItem>

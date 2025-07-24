@@ -22,10 +22,14 @@ import { db } from "@/lib/firebaseConfig"
 import { Header } from "@/app/components/header"
 import { Footer } from "@/app/components/footer"
 import { useAuth } from "@/lib/useAuth"
+import { usePageTracking } from "@/lib/usePageTracking"
 
 export default function PostTextbookPage() {
   const router = useRouter()
   const { user, userProfile, loading } = useAuth()
+  
+  // ページビューを記録
+  usePageTracking('/post-textbook')
   
   // デバッグ用ログ
   console.log("Auth状態:", { user, userProfile, loading })

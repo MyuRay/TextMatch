@@ -15,6 +15,7 @@ import { Check, ChevronsUpDown } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Header } from "../components/header"
 import { Footer } from "../components/footer"
+import { usePageTracking } from "@/lib/usePageTracking"
 import { AvatarUpload } from "../components/avatar-upload"
 import { Eye, EyeOff } from "lucide-react"
 import { registerUser, sendVerificationEmail, updateUserProfile } from "@/lib/firebaseAuth"
@@ -48,6 +49,9 @@ const loadUniversitiesFromCSV = async (): Promise<string[]> => {
 
 export default function RegisterPage() {
   const router = useRouter()
+  
+  // ページビューを記録
+  usePageTracking('/register')
   const [formData, setFormData] = useState({
     fullName: "",
     nickname: "",

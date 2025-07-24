@@ -14,9 +14,14 @@ import { Header } from "../components/header"
 import { Footer } from "../components/footer"
 import { Eye, EyeOff } from "lucide-react"
 import { loginUser, checkEmailVerification, resendVerificationEmail } from "@/lib/firebaseAuth" // ✅ 追加
+import { usePageTracking } from "@/lib/usePageTracking"
 
 export default function LoginPage() {
   const router = useRouter()
+  
+  // ページビューを記録
+  usePageTracking('/login')
+  
   const [formData, setFormData] = useState({
     email: "",
     password: "",
