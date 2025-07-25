@@ -15,6 +15,7 @@ import { Footer } from "../components/footer"
 // import StripeConnectButton from "@/components/stripe-connect-button"
 import { useAuth } from "@/lib/useAuth"
 import { usePageTracking } from "@/lib/usePageTracking"
+import { NotificationSetupPrompt } from "@/components/notification-setup-prompt"
 
 export default function MarketplacePage() {
   const searchParams = useSearchParams()
@@ -119,6 +120,9 @@ export default function MarketplacePage() {
                   )} */}
                 </div>
               </div>
+
+              {/* 通知設定プロンプト */}
+              <NotificationSetupPrompt />
               
               <div className="relative max-w-2xl mx-auto">
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />

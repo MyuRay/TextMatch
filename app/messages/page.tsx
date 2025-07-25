@@ -14,6 +14,7 @@ import Link from "next/link"
 import { Header } from "../components/header"
 import { Footer } from "../components/footer"
 import { getUserProfile, getTextbookById } from "@/lib/firestore"
+import { NotificationSetupPrompt } from "@/components/notification-setup-prompt"
 
 export const dynamic = 'force-dynamic'
 
@@ -223,6 +224,9 @@ export default function MessagesPage() {
             <MessageSquare className="h-8 w-8 text-primary" />
             <h1 className="text-3xl font-bold">メッセージ</h1>
           </div>
+
+          {/* 通知設定プロンプト */}
+          <NotificationSetupPrompt />
 
           {conversations.length === 0 ? (
             <Card>

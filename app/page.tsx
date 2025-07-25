@@ -13,6 +13,7 @@ import { Footer } from "./components/footer"
 import { getTextbooks, getAllTextbooks, Textbook } from "@/lib/firestore"
 import { useAuth } from "@/lib/useAuth"
 import { usePageTracking } from "@/lib/usePageTracking"
+import { NotificationSetupPrompt } from "@/components/notification-setup-prompt"
 
 export default function HomePage() {
   const [latestBooks, setLatestBooks] = useState<Textbook[]>([])
@@ -104,6 +105,11 @@ export default function HomePage() {
             <p className="text-sm md:text-xl text-muted-foreground mb-6 md:mb-8 max-w-2xl mx-auto">
               オンライン✕オフライン 学生のためのフリーマーケット
             </p>
+
+            {/* 通知設定プロンプト */}
+            <div className="max-w-2xl mx-auto mb-6">
+              <NotificationSetupPrompt />
+            </div>
 
             <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-3 md:gap-4 max-w-lg mx-auto mb-6 md:mb-10">
               <div className="relative flex-grow">
