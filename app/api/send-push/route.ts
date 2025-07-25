@@ -87,7 +87,11 @@ export async function POST(request: NextRequest) {
     if (!fcmToken) {
       console.log(`❌ ユーザー ${recipientId} のFCMトークンが見つかりません`)
       return NextResponse.json(
-        { error: "FCMトークンが見つかりません" },
+        { 
+          error: "FCMトークンが見つかりません",
+          details: "ユーザーが通知を許可していないか、FCMトークンが未登録です",
+          suggestion: "ユーザーに通知許可を求めてください"
+        },
         { status: 404 }
       )
     }

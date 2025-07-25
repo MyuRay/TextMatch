@@ -120,22 +120,40 @@ export async function saveFCMToken(userId: string, token: string, enabled: boole
  */
 export async function getUserFCMToken(userId: string): Promise<string | null> {
   try {
+    console.log(`🔍 [getUserFCMToken] ユーザー ${userId} のFCMトークン取得開始`)
+    
     const userTokenRef = doc(db, "userTokens", userId)
     const tokenDoc = await getDoc(userTokenRef)
     
     if (!tokenDoc.exists()) {
+      console.log(`❌ [getUserFCMToken] ユーザー ${userId}: userTokensドキュメントが存在しません`)
       return null
     }
 
     const data = tokenDoc.data()
+    console.log(`📋 [getUserFCMToken] ユーザー ${userId} のトークンデータ:`, {
+      hasToken: !!data.fcmToken,
+      enabled: data.enabled,
+      updatedAt: data.updatedAt,
+      platform: data.platform
+    })
+
     // 通知が無効の場合はnullを返す
     if (data.enabled === false) {
+      console.log(`❌ [getUserFCMToken] ユーザー ${userId}: 通知が無効化されています`)
       return null
     }
 
-    return data.fcmToken || null
+    const token = data.fcmToken || null
+    if (token) {
+      console.log(`✅ [getUserFCMToken] ユーザー ${userId}: FCMトークン取得成功`)
+    } else {
+      console.log(`❌ [getUserFCMToken] ユーザー ${userId}: FCMトークンが空です`)
+    }
+
+    return token
   } catch (error: any) {
-    console.error("FCMトークン取得エラー:", error)
+    console.error(`❌ [getUserFCMToken] ユーザー ${userId} のFCMトークン取得エラー:`, error)
     return null
   }
 }
