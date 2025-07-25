@@ -184,100 +184,108 @@ export default function AdminReportsPage() {
         <div className="container mx-auto px-4">
           <div className="flex flex-col gap-6">
             {/* ヘッダー */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" asChild>
                   <Link href="/admin">
                     <ChevronLeft className="h-4 w-4 mr-2" />
-                    管理画面に戻る
+                    <span className="hidden sm:inline">管理画面に戻る</span>
+                    <span className="sm:hidden">戻る</span>
                   </Link>
                 </Button>
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-                    <BarChart3 className="h-6 w-6" />
-                    レポート・分析
+                <div className="flex-1">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6" />
+                    <span className="hidden sm:inline">レポート・分析</span>
+                    <span className="sm:hidden">分析</span>
                   </h1>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-muted-foreground text-xs sm:text-sm hidden sm:block">
                     プラットフォームの詳細分析とレポート
                   </p>
                 </div>
               </div>
               
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <select 
                   value={dateRange} 
                   onChange={(e) => setDateRange(e.target.value)}
-                  className="px-3 py-2 border rounded-md text-sm"
+                  className="px-3 py-2 border rounded-md text-sm flex-1 sm:flex-none"
                 >
                   <option value="7d">過去7日</option>
                   <option value="30d">過去30日</option>
                   <option value="90d">過去90日</option>
                 </select>
-                <Button variant="outline" size="sm" onClick={() => exportToCSV(analytics.dailyStats, 'daily_stats')}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => exportToCSV(analytics.dailyStats, 'daily_stats')}
+                  className="flex-1 sm:flex-none"
+                >
                   <Download className="h-4 w-4 mr-2" />
-                  エクスポート
+                  <span className="hidden sm:inline">エクスポート</span>
+                  <span className="sm:hidden">CSV</span>
                 </Button>
               </div>
             </div>
 
             {/* KPI カード */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
               <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">総ユーザー数</p>
-                      <p className="text-2xl font-bold">{analytics.totalUsers.toLocaleString()}</p>
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">総ユーザー数</p>
+                      <p className="text-lg sm:text-2xl font-bold">{analytics.totalUsers.toLocaleString()}</p>
                     </div>
-                    <Users className="h-8 w-8 text-blue-600" />
+                    <Users className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 self-end sm:self-auto" />
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">総出品数</p>
-                      <p className="text-2xl font-bold">{analytics.totalBooks.toLocaleString()}</p>
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">総出品数</p>
+                      <p className="text-lg sm:text-2xl font-bold">{analytics.totalBooks.toLocaleString()}</p>
                     </div>
-                    <BookOpen className="h-8 w-8 text-green-600" />
+                    <BookOpen className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 self-end sm:self-auto" />
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">総取引数</p>
-                      <p className="text-2xl font-bold">{analytics.totalTransactions.toLocaleString()}</p>
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">総取引数</p>
+                      <p className="text-lg sm:text-2xl font-bold">{analytics.totalTransactions.toLocaleString()}</p>
                     </div>
-                    <TrendingUp className="h-8 w-8 text-purple-600" />
+                    <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 self-end sm:self-auto" />
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">総収益</p>
-                      <p className="text-2xl font-bold">¥{analytics.totalRevenue.toLocaleString()}</p>
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">総収益</p>
+                      <p className="text-lg sm:text-2xl font-bold">¥{analytics.totalRevenue.toLocaleString()}</p>
                     </div>
-                    <DollarSign className="h-8 w-8 text-green-600" />
+                    <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 self-end sm:self-auto" />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">総PV</p>
-                      <p className="text-2xl font-bold">{accessStats?.totalPageViews.toLocaleString() || '0'}</p>
+              <Card className="col-span-2 sm:col-span-1">
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">総PV</p>
+                      <p className="text-lg sm:text-2xl font-bold">{accessStats?.totalPageViews.toLocaleString() || '0'}</p>
                     </div>
-                    <Activity className="h-8 w-8 text-orange-600" />
+                    <Activity className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600 self-end sm:self-auto" />
                   </div>
                 </CardContent>
               </Card>
@@ -285,52 +293,93 @@ export default function AdminReportsPage() {
 
             {/* タブ */}
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
-                <TabsTrigger value="overview" className="flex items-center gap-2">
-                  <Activity className="h-4 w-4" />
-                  概要
-                </TabsTrigger>
-                <TabsTrigger value="access" className="flex items-center gap-2">
-                  <Eye className="h-4 w-4" />
-                  アクセス
-                </TabsTrigger>
-                <TabsTrigger value="sales" className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  売上分析
-                </TabsTrigger>
-                <TabsTrigger value="users" className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  ユーザー分析
-                </TabsTrigger>
-                <TabsTrigger value="universities" className="flex items-center gap-2">
-                  <Target className="h-4 w-4" />
-                  大学別分析
-                </TabsTrigger>
-                <TabsTrigger value="performance" className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  パフォーマンス
-                </TabsTrigger>
-              </TabsList>
+              <div className="overflow-x-auto">
+                <TabsList className="grid w-full grid-cols-6 min-w-max">
+                  <TabsTrigger value="overview" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4">
+                    <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="text-xs sm:text-sm">概要</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="access" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4">
+                    <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="text-xs sm:text-sm">アクセス</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="sales" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4">
+                    <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="text-xs sm:text-sm hidden sm:inline">売上分析</span>
+                    <span className="text-xs sm:hidden">売上</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="users" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4">
+                    <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="text-xs sm:text-sm hidden sm:inline">ユーザー分析</span>
+                    <span className="text-xs sm:hidden">ユーザー</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="universities" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4">
+                    <Target className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="text-xs sm:text-sm hidden sm:inline">大学別分析</span>
+                    <span className="text-xs sm:hidden">大学</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="performance" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4">
+                    <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="text-xs sm:text-sm hidden sm:inline">パフォーマンス</span>
+                    <span className="text-xs sm:hidden">性能</span>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
               {/* 概要タブ */}
-              <TabsContent value="overview" className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <TabsContent value="overview" className="space-y-4 sm:space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   {/* 時系列グラフ */}
                   <Card className="lg:col-span-2">
-                    <CardHeader>
-                      <CardTitle>日次アクティビティ推移</CardTitle>
+                    <CardHeader className="pb-3 sm:pb-6">
+                      <CardTitle className="text-base sm:text-lg">日次アクティビティ推移</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <ResponsiveContainer width="100%" height={300}>
+                    <CardContent className="pt-0">
+                      <ResponsiveContainer width="100%" height={250}>
                         <LineChart data={analytics.dailyStats}>
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="date" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Line type="monotone" dataKey="users" stroke="#8884d8" name="ユーザー" />
-                          <Line type="monotone" dataKey="books" stroke="#82ca9d" name="出品" />
-                          <Line type="monotone" dataKey="transactions" stroke="#ffc658" name="取引" />
+                          <XAxis 
+                            dataKey="date" 
+                            fontSize={12}
+                            tick={{ fontSize: 10 }}
+                            interval="preserveStartEnd"
+                          />
+                          <YAxis fontSize={12} tick={{ fontSize: 10 }} />
+                          <Tooltip 
+                            contentStyle={{ 
+                              fontSize: '12px',
+                              padding: '8px',
+                              border: '1px solid #ccc',
+                              borderRadius: '4px'
+                            }}
+                          />
+                          <Legend 
+                            wrapperStyle={{ fontSize: '12px' }}
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="users" 
+                            stroke="#8884d8" 
+                            name="ユーザー"
+                            strokeWidth={2}
+                            dot={{ r: 3 }}
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="books" 
+                            stroke="#82ca9d" 
+                            name="出品"
+                            strokeWidth={2}
+                            dot={{ r: 3 }}
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="transactions" 
+                            stroke="#ffc658" 
+                            name="取引"
+                            strokeWidth={2}
+                            dot={{ r: 3 }}
+                          />
                         </LineChart>
                       </ResponsiveContainer>
                     </CardContent>
@@ -338,11 +387,11 @@ export default function AdminReportsPage() {
 
                   {/* 累積統計推移 */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle>累積統計推移</CardTitle>
+                    <CardHeader className="pb-3 sm:pb-6">
+                      <CardTitle className="text-base sm:text-lg">累積統計推移</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <ResponsiveContainer width="100%" height={250}>
+                    <CardContent className="pt-0">
+                      <ResponsiveContainer width="100%" height={200}>
                         <AreaChart data={(() => {
                           let cumulativeUsers = 0
                           let cumulativeBooks = 0
@@ -360,10 +409,22 @@ export default function AdminReportsPage() {
                           })
                         })()}>
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="date" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
+                          <XAxis 
+                            dataKey="date" 
+                            fontSize={10}
+                            tick={{ fontSize: 9 }}
+                            interval="preserveStartEnd"
+                          />
+                          <YAxis fontSize={10} tick={{ fontSize: 9 }} />
+                          <Tooltip 
+                            contentStyle={{ 
+                              fontSize: '11px',
+                              padding: '6px',
+                              border: '1px solid #ccc',
+                              borderRadius: '4px'
+                            }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: '10px' }} />
                           <Area 
                             type="monotone" 
                             dataKey="cumulativeUsers" 
@@ -409,16 +470,30 @@ export default function AdminReportsPage() {
 
                   {/* 価格分布 */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle>価格分布</CardTitle>
+                    <CardHeader className="pb-3 sm:pb-6">
+                      <CardTitle className="text-base sm:text-lg">価格分布</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <ResponsiveContainer width="100%" height={250}>
+                    <CardContent className="pt-0">
+                      <ResponsiveContainer width="100%" height={200}>
                         <BarChart data={analytics.transactionAnalysis.priceDistribution}>
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="range" />
-                          <YAxis />
-                          <Tooltip />
+                          <XAxis 
+                            dataKey="range" 
+                            fontSize={10}
+                            tick={{ fontSize: 9 }}
+                            angle={-45}
+                            textAnchor="end"
+                            height={60}
+                          />
+                          <YAxis fontSize={10} tick={{ fontSize: 9 }} />
+                          <Tooltip 
+                            contentStyle={{ 
+                              fontSize: '11px',
+                              padding: '6px',
+                              border: '1px solid #ccc',
+                              borderRadius: '4px'
+                            }}
+                          />
                           <Bar dataKey="count" fill="#8884d8" />
                         </BarChart>
                       </ResponsiveContainer>
@@ -427,23 +502,23 @@ export default function AdminReportsPage() {
 
                   {/* カテゴリ別売上 */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle>カテゴリ別出品数</CardTitle>
+                    <CardHeader className="pb-3 sm:pb-6">
+                      <CardTitle className="text-base sm:text-lg">カテゴリ別出品数</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pt-0">
                       <div className="space-y-3">
                         {analytics.categoryStats.slice(0, 5).map((category, index) => (
                           <div key={category.category} className="flex justify-between items-center">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
                               <div 
-                                className="w-4 h-4 rounded" 
+                                className="w-3 h-3 sm:w-4 sm:h-4 rounded flex-shrink-0" 
                                 style={{ backgroundColor: COLORS[index % COLORS.length] }}
                               />
-                              <span className="text-sm">{category.category}</span>
+                              <span className="text-xs sm:text-sm truncate">{category.category}</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">{category.count}件</span>
-                              <div className="w-20 h-2 bg-gray-200 rounded">
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className="text-xs sm:text-sm font-medium">{category.count}件</span>
+                              <div className="w-16 sm:w-20 h-2 bg-gray-200 rounded">
                                 <div 
                                   className="h-2 rounded" 
                                   style={{
@@ -765,31 +840,59 @@ export default function AdminReportsPage() {
               </TabsContent>
 
               {/* 大学別分析タブ */}
-              <TabsContent value="universities" className="space-y-6">
+              <TabsContent value="universities" className="space-y-4 sm:space-y-6">
                 <Card>
-                  <CardHeader>
-                    <CardTitle>大学別統計</CardTitle>
+                  <CardHeader className="pb-3 sm:pb-6">
+                    <CardTitle className="text-base sm:text-lg">大学別統計</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto">
+                  <CardContent className="pt-0">
+                    {/* モバイル用カード表示 */}
+                    <div className="sm:hidden space-y-3">
+                      {analytics.universityStats.slice(0, 10).map((university) => (
+                        <div key={university.university} className="border rounded-lg p-3 bg-gray-50">
+                          <div className="font-medium text-sm mb-2 truncate">{university.university}</div>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">ユーザー数</span>
+                              <span className="font-medium">{university.userCount}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">出品数</span>
+                              <span className="font-medium">{university.bookCount}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">取引数</span>
+                              <span className="font-medium">{university.transactionCount}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">平均価格</span>
+                              <span className="font-medium">¥{Math.round(university.averagePrice).toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* デスクトップ用テーブル表示 */}
+                    <div className="hidden sm:block overflow-x-auto">
                       <table className="w-full">
                         <thead>
                           <tr className="border-b">
-                            <th className="text-left p-2">大学名</th>
-                            <th className="text-right p-2">ユーザー数</th>
-                            <th className="text-right p-2">出品数</th>
-                            <th className="text-right p-2">取引数</th>
-                            <th className="text-right p-2">平均価格</th>
+                            <th className="text-left p-2 text-sm">大学名</th>
+                            <th className="text-right p-2 text-sm">ユーザー数</th>
+                            <th className="text-right p-2 text-sm">出品数</th>
+                            <th className="text-right p-2 text-sm">取引数</th>
+                            <th className="text-right p-2 text-sm">平均価格</th>
                           </tr>
                         </thead>
                         <tbody>
                           {analytics.universityStats.slice(0, 10).map((university) => (
-                            <tr key={university.university} className="border-b">
-                              <td className="p-2 font-medium">{university.university}</td>
-                              <td className="p-2 text-right">{university.userCount}</td>
-                              <td className="p-2 text-right">{university.bookCount}</td>
-                              <td className="p-2 text-right">{university.transactionCount}</td>
-                              <td className="p-2 text-right">¥{Math.round(university.averagePrice).toLocaleString()}</td>
+                            <tr key={university.university} className="border-b hover:bg-gray-50">
+                              <td className="p-2 font-medium text-sm">{university.university}</td>
+                              <td className="p-2 text-right text-sm">{university.userCount}</td>
+                              <td className="p-2 text-right text-sm">{university.bookCount}</td>
+                              <td className="p-2 text-right text-sm">{university.transactionCount}</td>
+                              <td className="p-2 text-right text-sm">¥{Math.round(university.averagePrice).toLocaleString()}</td>
                             </tr>
                           ))}
                         </tbody>

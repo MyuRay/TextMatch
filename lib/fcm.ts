@@ -10,7 +10,7 @@ import { db } from "./firebaseConfig"
 // FCM設定
 const FCM_CONFIG = {
   // 注意: 実際のプロジェクトでは環境変数に正しいVAPIDキーを設定してください
-  vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || "BHJ4WrXwQ_3RQQt_E3XjZ2x5X8F8zf9V1cRZjH4QJZ8wGjkFZmP3YzfWuFjN8vqL-hEFJR2kYmCp1gKYf9PQ5gY"
+  vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || "BPLjhnpJHUF04RUG5fPbb62j9N4AFn6yh4fBCeIwaGq_efPSfPxnkaqyb0d630bkyX8HOXeIL8BVAR4NiNlMlu4"
 }
 
 console.log("FCM設定:", {
@@ -104,10 +104,11 @@ export async function saveFCMToken(userId: string, token: string, enabled: boole
       fcmToken: token,
       enabled: enabled, // 通知の有効/無効フラグ
       updatedAt: new Date(),
-      platform: "web"
+      platform: "web",
+      vapidKey: FCM_CONFIG.vapidKey // VAPIDキーも保存して整合性確認
     }, { merge: true })
 
-    console.log("FCMトークン保存完了:", { enabled })
+    console.log("FCMトークン保存完了:", { enabled, vapidKey: FCM_CONFIG.vapidKey.substring(0, 20) + "..." })
   } catch (error: any) {
     console.error("FCMトークン保存エラー:", error)
     throw error
@@ -149,6 +150,13 @@ export async function getUserNotificationSettings(userId: string): Promise<{
 }> {
   try {
     console.log("📖 Firestoreからユーザートークンを取得中...", userId)
+    
+    // 認証状態を確認
+    if (!userId) {
+      console.log("❌ ユーザーIDが不正です")
+      throw new Error("Invalid user ID")
+    }
+    
     const userTokenRef = doc(db, "userTokens", userId)
     console.log("📍 ドキュメント参照作成完了")
     
@@ -345,7 +353,14 @@ export async function sendPushNotification(
     })
 
     if (!response.ok) {
-      throw new Error(`プッシュ通知送信失敗: ${response.status}`)
+      const errorText = await response.text()
+      console.error(`❌ プッシュ通知API失敗:`, {
+        status: response.status,
+        statusText: response.statusText,
+        url: response.url,
+        errorBody: errorText
+      })
+      throw new Error(`プッシュ通知送信失敗: ${response.status} - ${errorText}`)
     }
 
     const result = await response.json()

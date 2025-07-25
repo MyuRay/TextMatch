@@ -38,44 +38,28 @@ service cloud.firestore {
 
     // Users collection
     match /users/{userId} {
-      // ユーザーは自分のプロフィールを読み書き可能
       allow read, write: if isOwner(userId);
-      
-      // 管理者は全ユーザーを読み書き可能
       allow read, write: if isAdmin();
-      
-      // 認証済みユーザーは他ユーザーの基本情報のみ読み取り可能
       allow read: if isAuthenticated();
-      
-      // 新規ユーザー作成時のバリデーション
       allow create: if isOwner(userId) && isValidUserData(request.resource.data);
     }
     
-    // Books collection (旧textbooksから変更)
+    // Books collection
     match /books/{bookId} {
-      // 出品者は自分の出品を読み書き可能
       allow read, write: if isAuthenticated() && 
                             (resource == null || isOwner(resource.data.userId));
-      
-      // 管理者は全出品を読み書き可能
       allow read, write: if isAdmin();
-      
-      // 認証済みユーザーは承認済み出品を読み取り可能
       allow read: if isAuthenticated() && 
                      (resource == null || resource.data.get('isApproved', true) == true);
-      
-      // 新規出品作成時のバリデーション
       allow create: if isAuthenticated() && 
                        isValidBookData(request.resource.data) &&
                        isOwner(request.resource.data.userId);
-                       
-      // 購入者も取引に関連する更新が可能
       allow update: if isAuthenticated() && 
                        (isOwner(resource.data.userId) || 
                         isOwner(resource.data.get('buyerId', '')));
     }
     
-    // 旧textbooksコレクションとの互換性のため
+    // textbooks互換性
     match /textbooks/{bookId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() && 
@@ -87,32 +71,21 @@ service cloud.firestore {
     
     // Conversations collection
     match /conversations/{conversationId} {
-      // 会話の参加者のみアクセス可能
       allow read, write: if isAuthenticated() && 
                             (resource == null || 
                              isOwner(resource.data.buyerId) || 
                              isOwner(resource.data.sellerId));
-      
-      // 管理者は全会話を読み取り可能
       allow read: if isAdmin();
-      
-      // 会話作成時のバリデーション
       allow create: if isAuthenticated() && 
                        (isOwner(request.resource.data.buyerId) || 
                         isOwner(request.resource.data.sellerId));
       
-      // Messages subcollection
       match /messages/{messageId} {
-        // 会話の参加者のみメッセージを読み書き可能
         allow read, write: if isAuthenticated() && 
                               (exists(/databases/$(database)/documents/conversations/$(conversationId)) &&
                                (isOwner(get(/databases/$(database)/documents/conversations/$(conversationId)).data.buyerId) ||
                                 isOwner(get(/databases/$(database)/documents/conversations/$(conversationId)).data.sellerId)));
-        
-        // 管理者は全メッセージを読み取り・削除可能
         allow read, delete: if isAdmin();
-        
-        // メッセージ作成時のバリデーション
         allow create: if isAuthenticated() && 
                          request.resource.data.senderId == request.auth.uid &&
                          request.resource.data.keys().hasAll(['text', 'senderId', 'createdAt']);
@@ -121,34 +94,20 @@ service cloud.firestore {
     
     // Favorites collection
     match /favorites/{favoriteId} {
-      // お気に入りの所有者のみアクセス可能
       allow read, write: if isAuthenticated() && 
                             (resource == null || isOwner(resource.data.userId));
-      
-      // 作成時のバリデーション
       allow create: if isAuthenticated() && 
                        isOwner(request.resource.data.userId);
     }
     
     // Reports collection
     match /reports/{reportId} {
-      // 通報者のみ自分の通報を読み取り可能
       allow read: if isAuthenticated() && 
                      (resource == null || isOwner(resource.data.reporterId));
-      
-      // 管理者は全通報を読み書き可能
       allow read, write: if isAdmin();
-      
-      // 認証済みユーザーは通報を作成可能
       allow create: if isAuthenticated() && 
                        isOwner(request.resource.data.reporterId) &&
                        request.resource.data.keys().hasAll(['reporterId', 'reportedUserId', 'reason', 'createdAt']);
-    }
-    
-    // Admin notifications collection
-    match /admin_notifications/{notificationId} {
-      // 管理者のみアクセス可能
-      allow read, write: if isAdmin();
     }
     
     // User Tokens collection (FCM)
@@ -158,26 +117,16 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isOwner(userId);
     }
     
-    // Notifications collection
-    match /notifications/{notificationId} {
-      allow read, write: if isAuthenticated() && 
-                            (resource == null || isOwner(resource.data.userId));
+    // Admin collections
+    match /admin_notifications/{notificationId} {
       allow read, write: if isAdmin();
-      allow create: if isAuthenticated() && 
-                       isOwner(request.resource.data.userId) &&
-                       request.resource.data.keys().hasAll(['userId', 'type', 'title', 'message', 'isRead', 'createdAt']);
     }
     
-    // Analytics collections
     match /page_views/{viewId} {
-      // 認証済みユーザーによる書き込みを許可
       allow create: if isAuthenticated();
-      
-      // 管理者は読み取り可能
       allow read: if isAdmin();
     }
     
-    // Admin-only collections
     match /admin_delete_logs/{logId} {
       allow read, write: if isAdmin();
     }
@@ -194,16 +143,16 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
     
-    // Stripe related collections (server-side only)
+    // Stripe関連（サーバーサイドのみ）
     match /stripe_customers/{customerId} {
-      allow read, write: if false; // Server-side only
+      allow read, write: if false;
     }
     
     match /stripe_payment_intents/{paymentIntentId} {
-      allow read, write: if false; // Server-side only
+      allow read, write: if false;
     }
     
-    // Default deny rule for any unmatched documents
+    // デフォルト拒否
     match /{document=**} {
       allow read, write: if false;
     }

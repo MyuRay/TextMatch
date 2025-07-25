@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Users, Book, MessageSquare, TrendingUp, Shield, Settings, FileText, AlertTriangle, DollarSign, Banknote, CheckCircle, AlertCircle, Flag } from "lucide-react"
 import Link from "next/link"
+import { FCMDebugPanel } from "@/components/fcm-debug"
 
 interface DashboardStats {
   totalUsers: number
@@ -332,6 +333,9 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* FCMデバッグパネル */}
+        <FCMDebugPanel />
 
         {/* 管理メニュー */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

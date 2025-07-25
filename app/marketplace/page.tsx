@@ -44,6 +44,14 @@ export default function MarketplacePage() {
     fetchBooks()
   }, [])
 
+  // URLパラメータが変更された時に検索欄を更新
+  useEffect(() => {
+    const newSearchQuery = urlQuery || urlUniversity
+    if (newSearchQuery !== searchQuery) {
+      setSearchQuery(newSearchQuery)
+    }
+  }, [urlQuery, urlUniversity])
+
   useEffect(() => {
     let filtered = [...allTextbooks]
     const keyword = searchQuery.toLowerCase()

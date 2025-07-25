@@ -1,7 +1,7 @@
 // lib/firebaseConfig.ts
 import { initializeApp } from "firebase/app"
-import { getFirestore } from "firebase/firestore"
-import { getAuth } from "firebase/auth" // ← これを追加
+import { getFirestore, connectFirestoreEmulator } from "firebase/firestore"
+import { getAuth } from "firebase/auth"
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -18,6 +18,28 @@ console.log('Firebase Config:', firebaseConfig)
 
 const app = initializeApp(firebaseConfig)
 
-export const db = getFirestore(app)
+// Firestoreの初期化にエラーハンドリングを追加
+export const db = (() => {
+  try {
+    const firestore = getFirestore(app)
+    
+    // 開発環境でのみエミュレータ接続を試行
+    if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+      try {
+        // エミュレータが利用可能な場合のみ接続
+        // connectFirestoreEmulator(firestore, 'localhost', 8080)
+        console.log('🔥 Firestore: 本番環境に接続')
+      } catch (emulatorError) {
+        console.log('🔥 Firestore: エミュレータ接続をスキップ')
+      }
+    }
+    
+    return firestore
+  } catch (error) {
+    console.error('🔥 Firestore初期化エラー:', error)
+    throw error
+  }
+})()
+
 export const auth = getAuth(app)
 export { app }

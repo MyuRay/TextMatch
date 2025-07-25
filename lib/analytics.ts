@@ -170,6 +170,7 @@ export async function getAccessStats(
 function generateDailyAccessStats(pageViews: PageView[], startDate: Date, endDate: Date) {
   const dailyStats = []
   const currentDate = new Date(startDate)
+  const seenSessionIds = new Set<string>() // 過去に見たセッションIDを記録
 
   while (currentDate <= endDate) {
     const dateStr = currentDate.toISOString().split('T')[0]
@@ -182,13 +183,22 @@ function generateDailyAccessStats(pageViews: PageView[], startDate: Date, endDat
       return pvDate >= dayStart && pvDate < dayEnd
     })
 
-    // その日のユニークビジター数
-    const uniqueVisitors = new Set(dayPageViews.map(pv => pv.sessionId)).size
+    // その日のセッションID一覧を取得
+    const daySessionIds = new Set(dayPageViews.map(pv => pv.sessionId))
+    
+    // その日に初めて訪問したユニーク訪問者数（新規ユニーク訪問者）
+    let newUniqueVisitors = 0
+    daySessionIds.forEach(sessionId => {
+      if (!seenSessionIds.has(sessionId)) {
+        newUniqueVisitors++
+        seenSessionIds.add(sessionId)
+      }
+    })
 
     dailyStats.push({
       date: dateStr,
       views: dayPageViews.length,
-      uniqueVisitors
+      uniqueVisitors: newUniqueVisitors
     })
 
     currentDate.setDate(currentDate.getDate() + 1)

@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getUserFCMToken } from "@/lib/fcm"
+import admin from "firebase-admin"
+
+// API Route の設定
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
+  console.log("🔔 [API] send-push POST リクエスト受信")
   try {
     const { recipientId, title, body, data } = await request.json()
+    console.log("🔔 [API] リクエストデータ:", { recipientId, title, body, data })
 
     if (!recipientId || !title || !body) {
       return NextResponse.json(
@@ -19,6 +26,14 @@ export async function POST(request: NextRequest) {
       (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL)
     )
 
+    console.log("🔍 Firebase認証情報チェック:", {
+      hasBase64Key: !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64,
+      hasJsonKey: !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY,
+      hasPrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
+      hasClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
+      projectId: process.env.FIREBASE_PROJECT_ID
+    })
+
     if (!hasFirebaseCredentials) {
       console.error("Firebase Admin SDK の認証情報が設定されていません")
       return NextResponse.json(
@@ -27,30 +42,42 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Firebase Admin SDK を動的にインポート・初期化
-    const admin = require("firebase-admin")
-    
-    if (!admin.apps.length) {
-      let serviceAccount
+    // Firebase Admin SDK を初期化
+    try {
+      if (!admin.apps.length) {
+        let serviceAccount
 
-      if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64) {
-        const decodedJson = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64, 'base64').toString('utf-8')
-        serviceAccount = JSON.parse(decodedJson)
-      } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-      } else if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
-        serviceAccount = {
-          type: "service_account",
-          project_id: process.env.FIREBASE_PROJECT_ID || "unitext-8181a",
-          private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-          client_email: process.env.FIREBASE_CLIENT_EMAIL,
+        if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64) {
+          const decodedJson = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64, 'base64').toString('utf-8')
+          serviceAccount = JSON.parse(decodedJson)
+        } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+          serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
+        } else if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
+          serviceAccount = {
+            type: "service_account",
+            project_id: process.env.FIREBASE_PROJECT_ID || "unitext-8181a",
+            private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+            client_email: process.env.FIREBASE_CLIENT_EMAIL,
+          }
+        } else {
+          throw new Error("Firebase サービスアカウント情報が見つかりません")
         }
-      }
 
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        projectId: serviceAccount.project_id
-      })
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+          projectId: serviceAccount.project_id
+        })
+        console.log("✅ Firebase Admin SDK 初期化完了")
+      }
+    } catch (initError) {
+      console.error("❌ Firebase Admin SDK 初期化エラー:", initError)
+      return NextResponse.json(
+        { 
+          error: "Firebase初期化エラー",
+          details: initError instanceof Error ? initError.message : String(initError)
+        },
+        { status: 500 }
+      )
     }
 
     // 受信者のFCMトークンを取得
